@@ -129,20 +129,27 @@ evidence — several invented image-quality metrics were discarded here after
 failing to agree with human judgement, so enhancement claims are measured
 against ground-truth text instead.
 
-Current measured result (synthetic benchmark):
+Current measured result (synthetic benchmark, lower CER is better):
 
 | case | baseline CER | flattened CER | |
 |------|-------------|---------------|---|
-| clean | 0.040 | 0.040 | correct no-op |
-| lighting gradient | 0.049 | **0.036** | flattening helps |
-| cast shadow | 0.036 | 0.036 | no change |
-| shadow + sensor noise | 0.647 | **0.812** | flattening *hurts* |
+| clean | 0.040 | **0.027** | helps |
+| ruled lines only | 0.040 | 0.045 | ~unchanged |
+| lighting gradient | 0.049 | **0.031** | helps |
+| cast shadow | 0.036 | **0.027** | helps |
+| shadow + sensor noise | 0.647 | **0.036** | rescued |
+| all degradations | **1.000** (unreadable) | **0.045** | rescued |
 
-Illumination flattening works on its designed target but **degrades noisy
-images**: dividing by the illumination field applies up to 4× gain, which
-amplifies noise that binarisation then removes along with the text
-(characters read fell 80 → 42). Denoise before flattening, or lower the gain
-cap. See `src/enhancement/illumination.py`.
+The last two rows are the point: on heavily degraded pages the existing
+pipeline reads *nothing at all*, and illumination flattening recovers the
+full text.
+
+Getting there required one non-obvious step. Flattening alone made noisy
+pages **worse** (0.647 → 0.812, characters read halved) because dividing by
+the illumination field amplifies noise, which binarisation then strips along
+with the text. Edge-preserving (bilateral) denoising before the division
+fixes it; Gaussian and median blur were both measured as worse than doing
+nothing, since they soften the strokes OCR depends on.
 
 ## Dataset
 
