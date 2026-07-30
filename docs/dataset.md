@@ -35,29 +35,48 @@ tilted-photo-on-a-cluttered-background conditions that document boundary
 detection and perspective correction are actually built to handle. To
 cover that, the team is capturing its own set:
 
-- **Target:** 300 images minimum — 100 each from Jainam, Dhanush, and
-  Vivek.
-- Documents (receipts, notes, printed pages, assignments, bills,
-  certificates, book pages) photographed on varied surfaces/backgrounds.
-- Deliberate variation: tilt/rotation, perspective angle, shadows/uneven
-  lighting, different document sizes.
-- Uploaded to a shared team Drive folder, then merged into `dataset/raw/`.
-- **Naming convention:** `raw/<contributor>_<type>_<variation>_<nn>.jpg`,
-  e.g. `raw/jainam_receipt_shadow_01.jpg`,
-  `raw/dhanush_notes_tilted_03.jpg`, `raw/vivek_book_lowlight_02.jpg` — the
-  contributor prefix avoids filename collisions when merging three
-  people's uploads, and the type/variation stays visible for evaluation.
+- **Delivered: 283 images** — `jainam_doc_*` (31), `vivek_doc_*` (104),
+  `dhanush_doc_*` (148). All stored at 1600px on the long side; the
+  originals from Vivek and Dhanush were 8–12MP, downscaled on ingest
+  because the pipeline caps at 1500px anyway and full-resolution copies
+  would have added ~750MB to the repository for no functional gain.
 - **License:** owned by the project team, used for educational purposes
   only within this course project.
-- **Used for:** the core document-detection → perspective-transform →
-  flattening pipeline stages, and as the primary demo set for lab
-  evaluation.
-- **Rollout:** development doesn't wait on all 300 — an initial ~20–30
-  images (from whoever delivers first) is enough to drive and debug the
-  detection/perspective pipeline now. The pipeline is classical
-  (rule-based OpenCV, not a trained model), so folding in the remaining
-  images later is a zero-cost drop into `dataset/raw/` — no retraining or
-  code changes required, just re-running `main.py` over the larger set.
+- **Naming convention:** `raw/<contributor>_doc_<nn>.jpg`. The contributor
+  prefix avoids collisions when merging three people's uploads.
+
+### Framing problem — read before using this set for detection
+
+A large portion of the delivered photos are **close-ups in which the page
+fills the entire frame, with no visible background or page border**. Document
+boundary detection and perspective correction cannot work on these: there is
+no boundary in the pixels to find, so the detector returns a spurious
+quadrilateral cutting across the page.
+
+Assessed visually from contact sheets (see "how to review" below); these are
+estimates, not exact counts — three attempts to classify this automatically
+(texture contamination, crop area fraction, border-brightness ratio) were all
+built and then **discarded after failing validation** against
+visually-labelled images, so no reliable automatic measure is claimed:
+
+| Set | Usable for boundary detection | Note |
+|-----|-------------------------------|------|
+| `jainam_doc_*` (31) | ~30 | Good framing; `jainam_doc_08` is cropped |
+| `vivek_doc_*` (104) | ~65 (roughly `044`+) | First ~40 are close-ups |
+| `dhanush_doc_*` (148) | few | Nearly all close-ups |
+
+The close-up images are **still valid** for the enhancement, thresholding,
+morphology, compression and OCR stages, which operate on an already-flat
+page — a frame-filling page is effectively pre-flattened. They are kept in
+the dataset for that reason rather than deleted.
+
+**If more detection images are needed**, the reshoot brief is: place the
+document on a contrasting surface, step back so all four corners and a
+margin of background are inside the frame, and shoot at an angle.
+
+**How to review framing:** build a contact sheet rather than opening images
+one at a time — it makes reviewing the whole set a single glance, and is how
+the above was assessed. See `docs/NEXT_STEPS.md`.
 
 ## Layout
 

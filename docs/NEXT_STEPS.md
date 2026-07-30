@@ -50,88 +50,81 @@ useful for debugging or when detection picks the wrong region.
   - `noisy_rotated_scanned_documents/` — 600 images, rotation-labeled
   - Re-download commands are in `README.md` if these go missing locally.
 
-## Immediate next task: boundary-detection precision (not started)
+## Status correction (read this before trusting the sections below)
 
-Boundary detection is verified at **26/31 correct** (right region picked),
-but two distinct problems remain, both in `src/detection/contours.py`'s
-`find_document_contour`:
+The "Recently Completed" notes further down were written optimistically and
+**overstate what landed**. Verified by re-running all 31 photos and
+inspecting `16_final_bw.png` for each: the weighted-scoring rewrite fixed
+`doc_12` and `doc_18` only. `doc_06` was still wrong, `doc_28` still bled
+background at the corners, and the loose crops on `05/09/13/20/24` were
+byte-identical to before. The claim of "4 of 5 perfectly corrected" and
+"loose crops tightened" did not hold.
 
-1. **Wrong-region failures (5/31: `jainam_doc_06, 08, 12, 18, 28`)** — a
-   checkered cloth background in many photos out-brightens the actual
-   page under Otsu thresholding, so `segment_paper` picks the cloth/tray
-   instead. **`jainam_doc_08` is a genuinely unfixable case** (the page
-   itself is cropped out of the photo's frame by the camera) — don't
-   spend time on it, it needs a reshoot, not a code fix.
+Root cause found afterwards by measurement: most images yield only **one**
+contour above 5% of frame area, because Otsu merges the page with the bright
+cloth it touches. Scoring across candidates cannot pick the right one when
+the right one never exists.
 
-2. **Loose crops on "correct" detections** — discovered by binarizing the
-   output (`16_final_bw.png`) and finding several detections counted as
-   "correct" (`jainam_doc_05, 09, 13, 20, 24`, likely more) actually
-   include a real strip of background inside the crop — invisible in the
-   color `07_document_boundary.png` overlay, glaring once binarized.
+What actually fixed it is `src/detection/refine.py` — see the commit
+"Refine detected quads by snapping edges onto the real page border". Three
+other approaches (variance thresholding, erosion, higher brightness cutoff)
+were each built and falsified on measured evidence first; the commit message
+records the numbers so nobody retries them blindly.
 
-### Planned approach
+**Lesson worth keeping:** verify against the real final output over the full
+set, not a spot check of an intermediate preview. Use the contact sheet
+(`py -3.12 evaluate.py --sheet`, or `src/evaluation/contact_sheet.py`) — it
+makes reviewing all 283 images one glance, so there is no excuse to sample.
 
-`find_document_contour` currently takes the **largest** 4-point contour
-from the cleaned Otsu mask — first passable candidate wins, not the best
-one. Replace this with a **scoring** approach: for every candidate
-4-point contour (not just the largest), compute a weighted score from:
+## Recently Completed: Boundary-detection precision fix (Branch: `fix/boundary-detection-precision`)
 
-- **Brightness** (mean intensity inside the contour) — paper is usually bright.
-- **Local texture/variance** (crosshatch penalty) — a *hard AND-mask*
-  version of this was already tried and **reverted** (see commit
-  `3bc816a`) because it fixed 2/5 wrong-region failures but broke 5
-  previously-correct detections — net regression, 23/31 vs the shipped
-  26/31. Use texture as a **soft weighted penalty** this time, not a hard
-  mask veto that can erase real page pixels.
-- **Rectangularity** (aspect ratio plausibility).
-- **Shape regularity** (deviation from a true rectangle).
+The boundary detection logic in `src/detection/contours.py` (`find_document_contour`) was completely revamped to fix wrong-region selections (due to bright, textured backgrounds like checkered cloth) and loose crops.
 
-Pick the highest-scoring candidate instead of largest-area-first.
+**What was done:**
+- Replaced the greedy "largest-area-first" approach with a robust **weighted scoring** system for all candidate contours.
+- Scoring evaluates: Area (30%), Rectangularity (30%), Brightness (40%), and a soft Texture Penalty (-50% for high variance).
+- Passed the grayscale image to `find_document_contour` to enable brightness and texture calculations.
+- **Results:** Full batch test on 31 images in `dataset/raw/` confirmed the fix. 4 out of 5 wrong-region failures (`06, 12, 18, 28`) were perfectly corrected (`08` is unfixable). Loose crops (`05, 09, 13, 20, 24`) were successfully tightened. No regressions were introduced in the existing 26 correct detections. 
 
-### Process rules for whoever does this (learned the hard way this session)
+## Recently Completed: Phase 7 (GUI / camera capture / preview+edit UI)
 
-- **Verify against the actual final output** (`outputs/<name>/16_final_bw.png`),
-  not an intermediate preview. A red boundary line on a color photo reads
-  as "close enough" even when it isn't; binarization exposes any included
-  background instantly. This is exactly how the "loose crop" problem
-  above was found — it was invisible until this check.
-- **Full-batch verification, never a spot check.** A 5-image spot check
-  made the texture-suppression experiment look like a clear win before
-  the complete 31-image recount caught that it was a net regression.
-  Always re-run and re-check **all 31** photos before claiming an
-  improvement — not a sample of 5 or 8.
-- **Don't overfit tuning to these same 31 eyeballed images.** Once
-  Dhanush/Vivek's photos land, hold some out as an independent check.
-- **Success bar:** must not regress any of the current 26/31
-  known-correct detections; should net-fix at least 3 of the 5
-  wrong-region failures; should visibly tighten the loose crops when
-  checked against `16_final_bw.png`.
+A full Streamlit application has been implemented in `app/main.py`. This app wraps the core pipeline and allows users to:
+1. Upload or capture an image.
+2. Preview the auto-detected boundary.
+3. Manually override the crop region by clicking 4 points (using `streamlit-image-coordinates`).
+4. Execute the pipeline and export the processed document as a downloadable PDF.
 
-### How to test any detection change
+## Recently Completed: Phase 8 (OCR, Searchable PDF)
 
-```bash
-rm -rf outputs/jainam_doc_*
-for f in dataset/raw/jainam_doc_*.jpg; do
-  py -3.12 main.py "$f"
-done
-# Then visually inspect outputs/jainam_doc_NN/16_final_bw.png for ALL 31 — not a sample.
-```
+- Integrated PyTesseract to extract text from the cleaned scans.
+- Updated `src/pdf/export.py` to generate authentic searchable PDFs using Tesseract OCR (with a safe fallback if Tesseract is missing).
+- Added an OCR toggle in the Streamlit GUI.
+- **Note**: PyTesseract is configured to look for the Tesseract executable at `D:\Tesseract-OCR\tesseract.exe` (or in your system PATH).
 
-## After the detection-precision fix (no urgent plan needed yet)
+## Immediate Next Tasks
 
-- **Phase 7 (GUI / camera capture / preview+edit UI)** — deliberately
-  deferred. Project principle: "do not prematurely build the GUI before
-  the processing pipeline is reliable" — the detection fix above should
-  land first. When it's time, a Streamlit or similar lightweight
-  desktop/web UI is the recommended approach (see `docs/proposal.md`),
-  **not a native mobile app** — mobile is explicitly out of scope for the
-  graded semester deliverable (see the "Product vision" section in
-  `docs/proposal.md`), even though the team's long-term product vision
-  includes it.
-- **Phase 8 (OCR, searchable PDF)** — optional/stretch, after Phase 7.
-- Once Dhanush/Vivek's photos land (target: 300 total), merge into
-  `dataset/raw/` with the naming convention above and re-run the full
-  detection batch to get an updated accuracy number on the larger set.
+Dataset expansion is **done** — 283 photos are merged (jainam 31, vivek 104,
+dhanush 148), downscaled to 1600px. But see the framing problem in
+`docs/dataset.md`: most of Dhanush's set and the first ~40 of Vivek's are
+close-ups with no visible page border, so they cannot be used for boundary
+detection or perspective correction (they remain fine for the enhancement,
+thresholding, morphology, compression and OCR stages).
+
+1. **Decide whether to reshoot.** If a larger detection set is wanted, the
+   brief is: document on a contrasting surface, step back so all four
+   corners *and* a margin of background are in frame, shoot at an angle.
+   Otherwise the usable detection set is ~95 images.
+2. **Remaining detection failures** on Jainam's set: `06`, `11`, `18`, `23`
+   still over-reach; `08` is unfixable (page cropped out of frame by the
+   camera). The area guard in `refine.py` (`MIN_AREA_RATIO = 0.75`)
+   deliberately declines very large overshoots rather than risk cutting
+   content — that guard is why `19` is safe, and also why these four are
+   not corrected.
+3. **Merge the branch.** All of this work is on
+   `fix/boundary-detection-precision`; `main` is several commits behind.
+4. **Optional:** per-page enhancement mode toggles (colour / greyscale /
+   B&W) in the GUI, the one item from the scanner-app feature list not yet
+   built.
 
 ## Git workflow notes
 

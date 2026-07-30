@@ -18,13 +18,15 @@ import numpy as np
 from src.compression.compare import compare_compression, save_compression_report
 from src.detection.contours import find_document_contour
 from src.detection.edges import denoise, detect_edges, to_grayscale
+from src.detection.refine import refine_quad
 from src.enhancement.basic import enhance_document
 from src.enhancement.contrast import adjust_brightness_contrast
 from src.enhancement.histogram import save_histogram_comparison
 from src.enhancement.sharpen import sharpen
 from src.morphology.operations import closing, opening
-from src.pdf.export import export_single_page_pdf
+from src.pdf.export import export_single_page_pdf, export_searchable_pdf
 from src.perspective.transform import four_point_transform
+from src.pipeline import BRIGHTNESS, CONTRAST, MORPH_KERNEL
 from src.preprocessing.loader import load_image, resize_image
 from src.segmentation.threshold import (
     adaptive_threshold,
@@ -74,7 +76,12 @@ def run_pipeline(image_path: str, manual_corners: np.ndarray | None = None) -> P
     save_stage(output_dir, "06_cleaned_mask", cleaned_mask)
 
     image_area = resized.shape[0] * resized.shape[1]
-    document_corners = manual_corners if manual_corners is not None else find_document_contour(cleaned_mask, image_area)
+    if manual_corners is not None:
+        document_corners = manual_corners
+    else:
+        document_corners = find_document_contour(cleaned_mask, image_area, gray)
+        if document_corners is not None:
+            document_corners = refine_quad(document_corners, gray)
 
     if document_corners is not None:
         boundary_preview = resized.copy()
@@ -92,7 +99,7 @@ def run_pipeline(image_path: str, manual_corners: np.ndarray | None = None) -> P
 
     save_stage(output_dir, "08_flattened", flattened)
 
-    contrast_adjusted = adjust_brightness_contrast(flattened, brightness=10, contrast=1.15)
+    contrast_adjusted = adjust_brightness_contrast(flattened, brightness=BRIGHTNESS, contrast=CONTRAST)
     save_stage(output_dir, "09_contrast_adjusted", contrast_adjusted)
 
     sharpened = sharpen(contrast_adjusted)
@@ -113,14 +120,17 @@ def run_pipeline(image_path: str, manual_corners: np.ndarray | None = None) -> P
     adaptive = adaptive_threshold(enhanced)
     save_stage(output_dir, "15_adaptive_threshold", adaptive)
 
-    morph_cleaned = closing(opening(adaptive, kernel_size=3), kernel_size=3)
+    morph_cleaned = closing(opening(adaptive, MORPH_KERNEL), MORPH_KERNEL)
     save_stage(output_dir, "16_final_bw", morph_cleaned)
 
     compression_sizes = compare_compression(enhanced, output_dir / "17_compression")
     save_compression_report(compression_sizes, output_dir / "17_compression" / "report.txt")
 
     pdf_path = output_dir / "18_scan.pdf"
-    export_single_page_pdf(output_dir / "16_final_bw.png", pdf_path)
+    print(f"Exporting PDF for {image_path.name}...")
+    success = export_searchable_pdf(output_dir / "16_final_bw.png", pdf_path)
+    if not success:
+        export_single_page_pdf(output_dir / "16_final_bw.png", pdf_path)
 
     print(f"Done. Stages saved to {output_dir}/")
     return output_dir / "16_final_bw.png"

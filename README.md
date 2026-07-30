@@ -99,6 +99,23 @@ If detection picks the wrong region, override it manually:
 py -3.12 main.py dataset/raw/sample.jpg --corners "50,40 900,60 880,1200 40,1180"
 ```
 
+## Evaluation
+
+```bash
+py -3.12 evaluate.py --sheet
+```
+
+Measures the whole dataset — detection rate, per-image processing time,
+output dimensions, and file size before/after compression — writing
+`outputs/evaluation/metrics.csv`, a printed summary, and (with `--sheet`)
+a contact sheet of every detected boundary.
+
+Read the detection rate carefully: it counts quadrilaterals **found**, not
+quadrilaterals that are **correct**. On a photo with no visible page border
+the detector returns a frame-sized quad rather than admitting failure, so
+the reported rate is an upper bound. Correctness still needs a look at the
+contact sheet.
+
 ## Dataset
 
 See [docs/dataset.md](docs/dataset.md) for full sources and licensing.
