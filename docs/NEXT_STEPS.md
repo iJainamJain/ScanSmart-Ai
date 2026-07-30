@@ -50,6 +50,32 @@ useful for debugging or when detection picks the wrong region.
   - `noisy_rotated_scanned_documents/` — 600 images, rotation-labeled
   - Re-download commands are in `README.md` if these go missing locally.
 
+## Status correction (read this before trusting the sections below)
+
+The "Recently Completed" notes further down were written optimistically and
+**overstate what landed**. Verified by re-running all 31 photos and
+inspecting `16_final_bw.png` for each: the weighted-scoring rewrite fixed
+`doc_12` and `doc_18` only. `doc_06` was still wrong, `doc_28` still bled
+background at the corners, and the loose crops on `05/09/13/20/24` were
+byte-identical to before. The claim of "4 of 5 perfectly corrected" and
+"loose crops tightened" did not hold.
+
+Root cause found afterwards by measurement: most images yield only **one**
+contour above 5% of frame area, because Otsu merges the page with the bright
+cloth it touches. Scoring across candidates cannot pick the right one when
+the right one never exists.
+
+What actually fixed it is `src/detection/refine.py` — see the commit
+"Refine detected quads by snapping edges onto the real page border". Three
+other approaches (variance thresholding, erosion, higher brightness cutoff)
+were each built and falsified on measured evidence first; the commit message
+records the numbers so nobody retries them blindly.
+
+**Lesson worth keeping:** verify against the real final output over the full
+set, not a spot check of an intermediate preview. Use the contact sheet
+(`py -3.12 evaluate.py --sheet`, or `src/evaluation/contact_sheet.py`) — it
+makes reviewing all 283 images one glance, so there is no excuse to sample.
+
 ## Recently Completed: Boundary-detection precision fix (Branch: `fix/boundary-detection-precision`)
 
 The boundary detection logic in `src/detection/contours.py` (`find_document_contour`) was completely revamped to fix wrong-region selections (due to bright, textured backgrounds like checkered cloth) and loose crops.
@@ -75,10 +101,30 @@ A full Streamlit application has been implemented in `app/main.py`. This app wra
 - Added an OCR toggle in the Streamlit GUI.
 - **Note**: PyTesseract is configured to look for the Tesseract executable at `D:\Tesseract-OCR\tesseract.exe` (or in your system PATH).
 
-## Immediate Next Tasks (Data Collection)
+## Immediate Next Tasks
 
-- **Dataset Expansion:** Once Dhanush's and Vivek's photos land (target: 300 total, 100 each), merge them into `dataset/raw/` following the `raw/<contributor>_<type>_<variation>_<nn>.jpg` convention (see `docs/dataset.md`).
-- **Re-evaluation:** After merging the new photos, re-run the full detection batch to get an updated accuracy number on the larger 300-image set. Do not overfit tuning to the first 31 images.
+Dataset expansion is **done** — 283 photos are merged (jainam 31, vivek 104,
+dhanush 148), downscaled to 1600px. But see the framing problem in
+`docs/dataset.md`: most of Dhanush's set and the first ~40 of Vivek's are
+close-ups with no visible page border, so they cannot be used for boundary
+detection or perspective correction (they remain fine for the enhancement,
+thresholding, morphology, compression and OCR stages).
+
+1. **Decide whether to reshoot.** If a larger detection set is wanted, the
+   brief is: document on a contrasting surface, step back so all four
+   corners *and* a margin of background are in frame, shoot at an angle.
+   Otherwise the usable detection set is ~95 images.
+2. **Remaining detection failures** on Jainam's set: `06`, `11`, `18`, `23`
+   still over-reach; `08` is unfixable (page cropped out of frame by the
+   camera). The area guard in `refine.py` (`MIN_AREA_RATIO = 0.75`)
+   deliberately declines very large overshoots rather than risk cutting
+   content — that guard is why `19` is safe, and also why these four are
+   not corrected.
+3. **Merge the branch.** All of this work is on
+   `fix/boundary-detection-precision`; `main` is several commits behind.
+4. **Optional:** per-page enhancement mode toggles (colour / greyscale /
+   B&W) in the GUI, the one item from the scanner-app feature list not yet
+   built.
 
 ## Git workflow notes
 
