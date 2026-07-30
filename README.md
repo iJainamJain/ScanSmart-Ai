@@ -83,9 +83,12 @@ document detection and perspective correction).
 
 ```bash
 # requires a Kaggle account + API token (~/.kaggle/kaggle.json)
-kaggle datasets download -d suvroo/scanned-images-dataset-for-ocr-and-vlm-finetuning -p dataset/external --unzip
-kaggle datasets download -d sthabile/noisy-and-rotated-scanned-documents -p dataset/external --unzip
+kaggle datasets download -d suvroo/scanned-images-dataset-for-ocr-and-vlm-finetuning -p dataset/external/scanned_images_ocr_vlm --unzip
+kaggle datasets download -d sthabile/noisy-and-rotated-scanned-documents -p dataset/external/noisy_rotated_scanned_documents --unzip
 ```
+
+(Alternatively, download the zips manually from the Kaggle dataset pages and
+extract into those same two subfolders.)
 
 ## Roadmap
 
