@@ -3,29 +3,36 @@
 import cv2
 import numpy as np
 
+EPSILON_FRACTIONS = (0.02, 0.03, 0.04, 0.05, 0.07, 0.09, 0.12)
 
-def find_contours(edge_image: np.ndarray) -> list[np.ndarray]:
-    """Find external contours in a binary edge image."""
-    contours, _ = cv2.findContours(edge_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+def find_contours(binary_image: np.ndarray) -> list[np.ndarray]:
+    """Find external contours in a binary image (edge map or mask)."""
+    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     return contours
 
 
-def find_document_contour(contours: list[np.ndarray], image_area: float) -> np.ndarray | None:
-    """Pick the largest 4-point contour that plausibly represents a document page.
+def find_document_contour(mask: np.ndarray, image_area: float) -> np.ndarray | None:
+    """Find the document's 4 corners from a cleaned paper-segmentation mask.
 
-    We only accept quadrilaterals covering a reasonable fraction of the frame;
-    smaller shapes are usually background clutter, not the document itself.
-    Returns None if no suitable contour is found.
+    The largest blob in the mask is assumed to be the page. Its raw
+    contour is rarely an exact quadrilateral (curled corners, folds, small
+    mask noise), so we take its convex hull first and simplify that with
+    approxPolyDP at increasing epsilon until exactly 4 corners remain.
+    Returns None if no sufficiently large candidate exists.
     """
-    min_area = image_area * 0.2
+    contours = find_contours(mask)
+    if not contours:
+        return None
 
-    for contour in sorted(contours, key=cv2.contourArea, reverse=True):
-        if cv2.contourArea(contour) < min_area:
-            break
+    largest = max(contours, key=cv2.contourArea)
+    if cv2.contourArea(largest) < image_area * 0.2:
+        return None
 
-        perimeter = cv2.arcLength(contour, True)
-        approx = cv2.approxPolyDP(contour, 0.02 * perimeter, True)
-
+    hull = cv2.convexHull(largest)
+    perimeter = cv2.arcLength(hull, True)
+    for eps_fraction in EPSILON_FRACTIONS:
+        approx = cv2.approxPolyDP(hull, eps_fraction * perimeter, True)
         if len(approx) == 4:
             return approx.reshape(4, 2).astype(np.float32)
 

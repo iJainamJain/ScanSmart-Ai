@@ -14,11 +14,12 @@ from pathlib import Path
 
 import cv2
 
-from src.detection.contours import find_contours, find_document_contour
+from src.detection.contours import find_document_contour
 from src.detection.edges import denoise, detect_edges, to_grayscale
 from src.enhancement.basic import enhance_document
 from src.perspective.transform import four_point_transform
 from src.preprocessing.loader import load_image, resize_image
+from src.segmentation.threshold import clean_mask, segment_paper
 
 OUTPUT_ROOT = Path("outputs")
 
@@ -45,18 +46,19 @@ def run_pipeline(image_path: str) -> Path:
     edges = detect_edges(blurred)
     save_stage(output_dir, "04_edges", edges)
 
-    contours = find_contours(edges)
-    image_area = resized.shape[0] * resized.shape[1]
-    document_corners = find_document_contour(contours, image_area)
+    paper_mask = segment_paper(blurred)
+    save_stage(output_dir, "05_paper_mask", paper_mask)
 
-    contour_preview = resized.copy()
-    cv2.drawContours(contour_preview, contours, -1, (0, 255, 0), 1)
-    save_stage(output_dir, "05_all_contours", contour_preview)
+    cleaned_mask = clean_mask(paper_mask)
+    save_stage(output_dir, "06_cleaned_mask", cleaned_mask)
+
+    image_area = resized.shape[0] * resized.shape[1]
+    document_corners = find_document_contour(cleaned_mask, image_area)
 
     if document_corners is not None:
         boundary_preview = resized.copy()
         cv2.drawContours(boundary_preview, [document_corners.astype(int)], -1, (0, 0, 255), 3)
-        save_stage(output_dir, "06_document_boundary", boundary_preview)
+        save_stage(output_dir, "07_document_boundary", boundary_preview)
 
         flattened = four_point_transform(resized, document_corners)
     else:
@@ -67,13 +69,13 @@ def run_pipeline(image_path: str) -> Path:
         )
         flattened = resized
 
-    save_stage(output_dir, "07_flattened", flattened)
+    save_stage(output_dir, "08_flattened", flattened)
 
     enhanced = enhance_document(flattened)
-    save_stage(output_dir, "08_final", enhanced)
+    save_stage(output_dir, "09_final", enhanced)
 
     print(f"Done. Stages saved to {output_dir}/")
-    return output_dir / "08_final.png"
+    return output_dir / "09_final.png"
 
 
 def main() -> None:
