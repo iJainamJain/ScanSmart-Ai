@@ -109,8 +109,10 @@ def test_estimate_illumination_removes_text_but_keeps_the_paper_level():
     page, _ = render_text_page()
     field = estimate_illumination(page)
     # Text pixels are dark in the original and paper-coloured in the field.
-    assert page.min() < 100
-    assert field.min() > 150
+    paper_level = int(np.percentile(page, 90))
+    assert page.min() < paper_level - 30, "the rendered text is darker than the paper"
+    assert field.min() > page.min(), "closing should have removed the darkest strokes"
+    assert abs(int(field.mean()) - paper_level) < 25, "the field should sit at paper level"
 
 
 def test_estimate_illumination_rejects_a_colour_image():
@@ -129,7 +131,10 @@ def test_denoising_reduces_noise_but_keeps_text_contrast():
 
     flat_region = (slice(900, 1100), slice(600, 850))  # below the last line of text
     assert cleaned[flat_region].std() < noisy[flat_region].std(), "noise should fall"
-    assert cleaned.min() < 120, "dark text must survive"
+    # Relative to the page's own ink, so this survives re-calibration of how
+    # faint the rendered text is.
+    paper_level = int(np.percentile(page, 90))
+    assert cleaned.min() < paper_level - 30, "text must stay clearly darker than paper"
 
 
 def test_flattening_denoises_by_default_and_can_be_turned_off():

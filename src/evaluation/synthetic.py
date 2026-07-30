@@ -29,18 +29,27 @@ def render_text_page(
     width: int = 900,
     height: int = 1200,
     font_scale: float = 0.7,
-    ink: int = 60,
+    ink: int = 165,
     thickness: int = 2,
 ) -> tuple[np.ndarray, str]:
     """Render text onto a white page. Returns (image, ground_truth_text).
 
-    These defaults were chosen by sweep, not taste. Tesseract reads the *raw*
-    rendered page at CER 0.004 whatever the size, so difficulty has to be set
-    against the pipeline's own output: too bold and the pipeline scores ~0.01
-    with no headroom left for a degradation to show any effect, too fine and
-    binarisation erases the text entirely (CER 1.0) before the experiment
-    begins. These land the clean case near 0.04 - readable, with room to move
-    in both directions.
+    These defaults were calibrated against the real dataset, not chosen by
+    taste, and the ink level matters more than anything else here.
+
+    Measured on real photos, handwriting sits at roughly 0.41-0.74 of the
+    paper level (ink ~136 on paper ~189). An earlier version of this
+    generator used ink=60 on paper 250 - a ratio of 0.24, far darker than any
+    real page - and that single unrepresentative choice inverted the
+    benchmark's conclusion: it reported that keeping the brightness/contrast
+    lift after illumination flattening was best, when on real photos that
+    combination erased most of the handwriting. At ink=165 (ratio 0.66) the
+    benchmark agrees with the real data.
+
+    Tesseract reads the *raw* rendered page at CER 0.004 whatever the size, so
+    difficulty has to be set against the pipeline's own output: too bold and
+    there is no headroom for a degradation to show any effect, too fine and
+    binarisation erases the text entirely before the experiment begins.
     """
     lines = lines or SAMPLE_LINES
     page = np.full((height, width), 250, np.uint8)

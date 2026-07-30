@@ -42,10 +42,17 @@ SYNTHETIC_CASES = {
 
 
 def variants_for(gray):
-    """The two pipelines under comparison, both taken through to final B&W."""
+    """The two pipelines under comparison, both taken through to final B&W.
+
+    The flattened arm skips the brightness/contrast lift, which flattening
+    has already made redundant - leaving it in saturates the page and erases
+    faint ink (see src.pipeline.enhance).
+    """
     return {
         "baseline": binarize(enhance(gray)),
-        "flattened": binarize(enhance(flatten_illumination(gray))),
+        "flattened": binarize(
+            enhance(flatten_illumination(gray), illumination_normalized=True)
+        ),
     }
 
 

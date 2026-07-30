@@ -133,23 +133,28 @@ Current measured result (synthetic benchmark, lower CER is better):
 
 | case | baseline CER | flattened CER | |
 |------|-------------|---------------|---|
-| clean | 0.040 | **0.027** | helps |
-| ruled lines only | 0.040 | 0.045 | ~unchanged |
-| lighting gradient | 0.049 | **0.031** | helps |
-| cast shadow | 0.036 | **0.027** | helps |
-| shadow + sensor noise | 0.647 | **0.036** | rescued |
-| all degradations | **1.000** (unreadable) | **0.045** | rescued |
+| clean | 0.143 | **0.054** | helps |
+| ruled lines only | 0.129 | **0.067** | helps |
+| lighting gradient | 0.071 | 0.080 | ~unchanged |
+| cast shadow | 0.094 | 0.094 | no change |
+| shadow + sensor noise | 0.661 | **0.161** | rescued |
+| all degradations | **1.000** (unreadable) | **0.804** | 0 → 50 chars read |
 
-The last two rows are the point: on heavily degraded pages the existing
-pipeline reads *nothing at all*, and illumination flattening recovers the
-full text.
+On real photos, final ink coverage goes 10.0% → 11.3%, i.e. flattening
+*recovers* strokes the baseline missed rather than removing them.
 
-Getting there required one non-obvious step. Flattening alone made noisy
-pages **worse** (0.647 → 0.812, characters read halved) because dividing by
-the illumination field amplifies noise, which binarisation then strips along
-with the text. Edge-preserving (bilateral) denoising before the division
-fixes it; Gaussian and median blur were both measured as worse than doing
-nothing, since they soften the strokes OCR depends on.
+Two non-obvious steps were needed to get there, both found by measurement:
+
+1. **Denoise first, with an edge-preserving filter.** The division amplifies
+   noise, which binarisation then strips along with the text. Gaussian and
+   median blur were both measured as *worse* than no denoising at all, since
+   they soften the strokes OCR depends on; bilateral preserves them.
+2. **Skip the brightness/contrast lift afterwards.** Flattening already
+   leaves paper near 255, so the lift saturates the page and crushes ink
+   contrast. Leaving it in collapsed real-photo ink coverage from 10.4% to
+   **1.4%** — most of the handwriting erased, while still looking plausible.
+
+Both are pinned by regression tests.
 
 ## Dataset
 
