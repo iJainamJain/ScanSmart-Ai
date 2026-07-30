@@ -1,0 +1,6 @@
+opencv-python>=4.9,<5
+numpy>=1.26,<2
+matplotlib>=3.8,<4
+pillow>=10.2,<11
+scikit-image>=0.22,<0.23
+pytest>=8.0,<9
