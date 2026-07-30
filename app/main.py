@@ -18,7 +18,7 @@ from src.enhancement.basic import enhance_document
 from src.enhancement.contrast import adjust_brightness_contrast
 from src.enhancement.sharpen import sharpen
 from src.morphology.operations import closing, opening
-from src.pdf.export import export_single_page_pdf
+from src.pdf.export import export_single_page_pdf, export_searchable_pdf
 from src.perspective.transform import four_point_transform
 from src.preprocessing.loader import resize_image
 from src.segmentation.threshold import adaptive_threshold, clean_mask, segment_paper
@@ -113,6 +113,8 @@ if image_file is not None:
 
     # 2. Process & Export
     st.subheader("2. Final Processing")
+    ocr_enabled = st.checkbox("Make PDF Searchable (OCR with Tesseract)", value=True)
+    
     if corners_to_use is not None:
         if st.button("Process Document", type="primary"):
             with st.spinner("Flattening and enhancing..."):
@@ -134,7 +136,16 @@ if image_file is not None:
                     pdf_path = temp_dir_path / "scan.pdf"
                     
                     cv2.imwrite(str(img_path), morph_cleaned)
-                    export_single_page_pdf(img_path, pdf_path)
+                    
+                    success = False
+                    if ocr_enabled:
+                        # Streamlit toast won't block, but spinner will hide it. We just run it.
+                        success = export_searchable_pdf(img_path, pdf_path)
+                        if not success:
+                            st.warning("OCR failed or Tesseract is missing. Falling back to standard PDF.")
+                            
+                    if not success:
+                        export_single_page_pdf(img_path, pdf_path)
                     
                     with open(pdf_path, "rb") as f:
                         pdf_bytes = f.read()

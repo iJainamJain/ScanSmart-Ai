@@ -68,11 +68,17 @@ A full Streamlit application has been implemented in `app/main.py`. This app wra
 3. Manually override the crop region by clicking 4 points (using `streamlit-image-coordinates`).
 4. Execute the pipeline and export the processed document as a downloadable PDF.
 
-## Immediate Next Tasks (Phase 8 & Data Collection)
+## Recently Completed: Phase 8 (OCR, Searchable PDF)
+
+- Integrated PyTesseract to extract text from the cleaned scans.
+- Updated `src/pdf/export.py` to generate authentic searchable PDFs using Tesseract OCR (with a safe fallback if Tesseract is missing).
+- Added an OCR toggle in the Streamlit GUI.
+- **Note**: PyTesseract is configured to look for the Tesseract executable at `D:\Tesseract-OCR\tesseract.exe` (or in your system PATH).
+
+## Immediate Next Tasks (Data Collection)
 
 - **Dataset Expansion:** Once Dhanush's and Vivek's photos land (target: 300 total, 100 each), merge them into `dataset/raw/` following the `raw/<contributor>_<type>_<variation>_<nn>.jpg` convention (see `docs/dataset.md`).
 - **Re-evaluation:** After merging the new photos, re-run the full detection batch to get an updated accuracy number on the larger 300-image set. Do not overfit tuning to the first 31 images.
-- **Phase 8 (OCR, searchable PDF):** Integrate OCR (e.g., PyTesseract) into the pipeline to make the exported PDFs searchable.
 
 ## Git workflow notes
 

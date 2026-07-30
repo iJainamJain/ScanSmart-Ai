@@ -8,3 +8,4 @@ kaggle>=1.6,<3
 reportlab>=4.1,<5
 streamlit>=1.31.0
 streamlit-image-coordinates>=0.1.7
+pytesseract>=0.3.10
