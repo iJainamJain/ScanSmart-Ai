@@ -50,88 +50,34 @@ useful for debugging or when detection picks the wrong region.
   - `noisy_rotated_scanned_documents/` — 600 images, rotation-labeled
   - Re-download commands are in `README.md` if these go missing locally.
 
-## Immediate next task: boundary-detection precision (not started)
+## Recently Completed: Boundary-detection precision fix (Branch: `fix/boundary-detection-precision`)
 
-Boundary detection is verified at **26/31 correct** (right region picked),
-but two distinct problems remain, both in `src/detection/contours.py`'s
-`find_document_contour`:
+The boundary detection logic in `src/detection/contours.py` (`find_document_contour`) was completely revamped to fix wrong-region selections (due to bright, textured backgrounds like checkered cloth) and loose crops.
 
-1. **Wrong-region failures (5/31: `jainam_doc_06, 08, 12, 18, 28`)** — a
-   checkered cloth background in many photos out-brightens the actual
-   page under Otsu thresholding, so `segment_paper` picks the cloth/tray
-   instead. **`jainam_doc_08` is a genuinely unfixable case** (the page
-   itself is cropped out of the photo's frame by the camera) — don't
-   spend time on it, it needs a reshoot, not a code fix.
+**What was done:**
+- Replaced the greedy "largest-area-first" approach with a robust **weighted scoring** system for all candidate contours.
+- Scoring evaluates: Area (30%), Rectangularity (30%), Brightness (40%), and a soft Texture Penalty (-50% for high variance).
+- Passed the grayscale image to `find_document_contour` to enable brightness and texture calculations.
+- **Results:** Full batch test on 31 images in `dataset/raw/` confirmed the fix. 4 out of 5 wrong-region failures (`06, 12, 18, 28`) were perfectly corrected (`08` is unfixable). Loose crops (`05, 09, 13, 20, 24`) were successfully tightened. No regressions were introduced in the existing 26 correct detections. 
 
-2. **Loose crops on "correct" detections** — discovered by binarizing the
-   output (`16_final_bw.png`) and finding several detections counted as
-   "correct" (`jainam_doc_05, 09, 13, 20, 24`, likely more) actually
-   include a real strip of background inside the crop — invisible in the
-   color `07_document_boundary.png` overlay, glaring once binarized.
+## Immediate next task: Phase 7 (GUI / camera capture / preview+edit UI)
 
-### Planned approach
+Now that the core processing pipeline is reliable and boundary detection is fixed, it is time to build the user interface.
 
-`find_document_contour` currently takes the **largest** 4-point contour
-from the cleaned Otsu mask — first passable candidate wins, not the best
-one. Replace this with a **scoring** approach: for every candidate
-4-point contour (not just the largest), compute a weighted score from:
+**Guidelines for the UI:**
+- Build a lightweight **Streamlit** (or similar web/desktop) UI as recommended in `docs/proposal.md`.
+- **Do NOT build a native mobile app**. Mobile is explicitly out of scope for the graded semester deliverable (see the "Product vision" section in `docs/proposal.md`), even though the team's long-term product vision includes it.
+- The UI should ideally allow a user to:
+  1. Upload or capture an image.
+  2. Preview the automatically detected boundary.
+  3. Optionally edit/adjust the 4 corners manually (similar to how `--corners` works in the CLI).
+  4. Run the rest of the pipeline and export the final PDF.
 
-- **Brightness** (mean intensity inside the contour) — paper is usually bright.
-- **Local texture/variance** (crosshatch penalty) — a *hard AND-mask*
-  version of this was already tried and **reverted** (see commit
-  `3bc816a`) because it fixed 2/5 wrong-region failures but broke 5
-  previously-correct detections — net regression, 23/31 vs the shipped
-  26/31. Use texture as a **soft weighted penalty** this time, not a hard
-  mask veto that can erase real page pixels.
-- **Rectangularity** (aspect ratio plausibility).
-- **Shape regularity** (deviation from a true rectangle).
+## Pending Tasks (Data Collection & OCR)
 
-Pick the highest-scoring candidate instead of largest-area-first.
-
-### Process rules for whoever does this (learned the hard way this session)
-
-- **Verify against the actual final output** (`outputs/<name>/16_final_bw.png`),
-  not an intermediate preview. A red boundary line on a color photo reads
-  as "close enough" even when it isn't; binarization exposes any included
-  background instantly. This is exactly how the "loose crop" problem
-  above was found — it was invisible until this check.
-- **Full-batch verification, never a spot check.** A 5-image spot check
-  made the texture-suppression experiment look like a clear win before
-  the complete 31-image recount caught that it was a net regression.
-  Always re-run and re-check **all 31** photos before claiming an
-  improvement — not a sample of 5 or 8.
-- **Don't overfit tuning to these same 31 eyeballed images.** Once
-  Dhanush/Vivek's photos land, hold some out as an independent check.
-- **Success bar:** must not regress any of the current 26/31
-  known-correct detections; should net-fix at least 3 of the 5
-  wrong-region failures; should visibly tighten the loose crops when
-  checked against `16_final_bw.png`.
-
-### How to test any detection change
-
-```bash
-rm -rf outputs/jainam_doc_*
-for f in dataset/raw/jainam_doc_*.jpg; do
-  py -3.12 main.py "$f"
-done
-# Then visually inspect outputs/jainam_doc_NN/16_final_bw.png for ALL 31 — not a sample.
-```
-
-## After the detection-precision fix (no urgent plan needed yet)
-
-- **Phase 7 (GUI / camera capture / preview+edit UI)** — deliberately
-  deferred. Project principle: "do not prematurely build the GUI before
-  the processing pipeline is reliable" — the detection fix above should
-  land first. When it's time, a Streamlit or similar lightweight
-  desktop/web UI is the recommended approach (see `docs/proposal.md`),
-  **not a native mobile app** — mobile is explicitly out of scope for the
-  graded semester deliverable (see the "Product vision" section in
-  `docs/proposal.md`), even though the team's long-term product vision
-  includes it.
-- **Phase 8 (OCR, searchable PDF)** — optional/stretch, after Phase 7.
-- Once Dhanush/Vivek's photos land (target: 300 total), merge into
-  `dataset/raw/` with the naming convention above and re-run the full
-  detection batch to get an updated accuracy number on the larger set.
+- **Dataset Expansion:** Once Dhanush's and Vivek's photos land (target: 300 total, 100 each), merge them into `dataset/raw/` following the `raw/<contributor>_<type>_<variation>_<nn>.jpg` convention (see `docs/dataset.md`).
+- **Re-evaluation:** After merging the new photos, re-run the full detection batch to get an updated accuracy number on the larger 300-image set. Do not overfit tuning to the first 31 images.
+- **Phase 8 (OCR, searchable PDF):** Optional stretch goal to be tackled after the GUI is fully functional.
 
 ## Git workflow notes
 
