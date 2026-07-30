@@ -7,16 +7,13 @@ import numpy as np
 def segment_paper(gray: np.ndarray) -> np.ndarray:
     """Binarize a grayscale image so the (bright) paper is foreground (255).
 
-    Otsu picks a global threshold automatically from the image's bimodal
-    histogram (paper vs. background). Since Otsu doesn't know which side is
-    "paper", we flip polarity when the foreground class turns out to be the
-    majority of the frame - the page is usually the brighter, smaller region
-    against a larger/darker surroundings.
+    Otsu picks a threshold from the image's bimodal histogram; combined
+    with THRESH_BINARY, pixels brighter than that threshold are always
+    mapped to 255 regardless of how much of the frame they cover, so no
+    polarity correction is needed here.
     """
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    if np.mean(binary) > 127:
-        return binary
-    return cv2.bitwise_not(binary)
+    return binary
 
 
 def clean_mask(mask: np.ndarray, close_size: int = 5, open_size: int = 21) -> np.ndarray:
