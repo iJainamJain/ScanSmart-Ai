@@ -116,6 +116,34 @@ the detector returns a frame-sized quad rather than admitting failure, so
 the reported rate is an upper bound. Correctness still needs a look at the
 contact sheet.
 
+## OCR accuracy (ground-truthed measurement)
+
+```bash
+py -3.12 ocr_eval.py                        # synthetic pages, known text
+py -3.12 ocr_eval.py --real dataset/pairs   # photos with <name>.gt.txt alongside
+```
+
+Scores character/word error rate for the pipeline with and without
+illumination flattening. This exists because "the output looks cleaner" is not
+evidence — several invented image-quality metrics were discarded here after
+failing to agree with human judgement, so enhancement claims are measured
+against ground-truth text instead.
+
+Current measured result (synthetic benchmark):
+
+| case | baseline CER | flattened CER | |
+|------|-------------|---------------|---|
+| clean | 0.040 | 0.040 | correct no-op |
+| lighting gradient | 0.049 | **0.036** | flattening helps |
+| cast shadow | 0.036 | 0.036 | no change |
+| shadow + sensor noise | 0.647 | **0.812** | flattening *hurts* |
+
+Illumination flattening works on its designed target but **degrades noisy
+images**: dividing by the illumination field applies up to 4× gain, which
+amplifies noise that binarisation then removes along with the text
+(characters read fell 80 → 42). Denoise before flattening, or lower the gain
+cap. See `src/enhancement/illumination.py`.
+
 ## Dataset
 
 See [docs/dataset.md](docs/dataset.md) for full sources and licensing.

@@ -1,7 +1,6 @@
 """PDF export for scanned documents: single-page, multi-page, and searchable (OCR)."""
 
 import io
-import os
 import sys
 from pathlib import Path
 
@@ -12,12 +11,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
 
-# Tesseract ships as a separate binary; pick it up from a common Windows
-# install location when it isn't already on PATH.
-if sys.platform == "win32":
-    _WINDOWS_TESSERACT = r"D:\Tesseract-OCR\tesseract.exe"
-    if os.path.exists(_WINDOWS_TESSERACT):
-        pytesseract.pytesseract.tesseract_cmd = _WINDOWS_TESSERACT
+import src.ocr.config  # noqa: F401  - locates the Tesseract binary on import
 
 MARGIN = 1 * cm
 
