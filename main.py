@@ -21,9 +21,16 @@ from src.enhancement.basic import enhance_document
 from src.enhancement.contrast import adjust_brightness_contrast
 from src.enhancement.histogram import save_histogram_comparison
 from src.enhancement.sharpen import sharpen
+from src.morphology.operations import closing, opening
 from src.perspective.transform import four_point_transform
 from src.preprocessing.loader import load_image, resize_image
-from src.segmentation.threshold import clean_mask, segment_paper
+from src.segmentation.threshold import (
+    adaptive_threshold,
+    clean_mask,
+    global_threshold,
+    otsu_binarize,
+    segment_paper,
+)
 
 OUTPUT_ROOT = Path("outputs")
 
@@ -90,7 +97,7 @@ def run_pipeline(image_path: str, manual_corners: np.ndarray | None = None) -> P
     save_stage(output_dir, "10_sharpened", sharpened)
 
     enhanced = enhance_document(sharpened)
-    save_stage(output_dir, "11_final", enhanced)
+    save_stage(output_dir, "11_enhanced", enhanced)
 
     save_histogram_comparison(
         to_grayscale(flattened) if flattened.ndim == 3 else flattened,
@@ -98,8 +105,17 @@ def run_pipeline(image_path: str, manual_corners: np.ndarray | None = None) -> P
         output_dir / "12_histogram_comparison.png",
     )
 
+    save_stage(output_dir, "13_global_threshold", global_threshold(enhanced))
+    save_stage(output_dir, "14_otsu_threshold", otsu_binarize(enhanced))
+
+    adaptive = adaptive_threshold(enhanced)
+    save_stage(output_dir, "15_adaptive_threshold", adaptive)
+
+    morph_cleaned = closing(opening(adaptive, kernel_size=3), kernel_size=3)
+    save_stage(output_dir, "16_final_bw", morph_cleaned)
+
     print(f"Done. Stages saved to {output_dir}/")
-    return output_dir / "11_final.png"
+    return output_dir / "16_final_bw.png"
 
 
 def main() -> None:

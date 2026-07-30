@@ -9,7 +9,7 @@ Built incrementally over a semester to demonstrate: image enhancement,
 filtering/noise removal, segmentation, thresholding, edge detection,
 morphological operations, geometric transforms, and image compression.
 
-## Current status: Phase 1–4
+## Current status: Phase 1–5
 
 The pipeline currently:
 
@@ -26,16 +26,20 @@ The pipeline currently:
 8. Adjusts brightness/contrast, sharpens (unsharp masking), then applies
    CLAHE for adaptive contrast
 9. Saves a before/after histogram comparison
-10. Saves every intermediate stage for inspection
+10. Binarizes the enhanced page with global, Otsu, and adaptive
+    thresholding (all three saved for comparison); adaptive thresholding
+    feeds the final B&W scanner-style output
+11. Cleans that binarized output with morphological opening + closing
+12. Saves every intermediate stage for inspection
 
-Boundary detection is verified at 26/31 correct on real self-captured
-photos (see [docs/dataset.md](docs/dataset.md)); known failure mode and
-planned fix are tracked as a backlog item.
+Boundary detection is verified at 26/31 correct (right region picked) on
+real self-captured photos, though several of those 26 include a looser
+crop margin than ideal (visible once binarized) - see
+[docs/dataset.md](docs/dataset.md) and the tracked backlog item for the
+planned precision fix.
 
 Not yet implemented (planned for later phases — see [docs/proposal.md](docs/proposal.md)):
-final-output binarization (adaptive/Otsu thresholding as a B&W scan mode),
-morphological cleanup of that output, compression comparison, PDF export,
-GUI, OCR.
+compression comparison, PDF export, GUI, OCR.
 
 ## Project structure
 
@@ -46,9 +50,9 @@ dip proj/
 │   ├── preprocessing/  # Image loading, resizing
 │   ├── detection/      # Grayscale, blur, Canny edges, contours
 │   ├── perspective/    # Corner ordering, four-point warp
-│   ├── enhancement/    # CLAHE / contrast / brightness
-│   ├── segmentation/   # Thresholding (future)
-│   ├── morphology/     # Erosion/dilation/opening/closing (future)
+│   ├── enhancement/    # CLAHE / contrast / brightness / sharpening / histograms
+│   ├── segmentation/   # Global / Otsu / adaptive thresholding
+│   ├── morphology/     # Erosion/dilation/opening/closing
 │   ├── compression/    # JPEG/PNG/PDF size comparison (future)
 │   ├── ocr/            # Tesseract OCR (future)
 │   └── pdf/            # PDF export (future)
@@ -81,7 +85,7 @@ py -3.12 main.py dataset/raw/sample.jpg
 ```
 
 Each pipeline stage is saved to `outputs/<image-name>/` (e.g.
-`01_resized.png`, `02_grayscale.png`, ... `11_final.png`, plus a
+`01_resized.png`, `02_grayscale.png`, ... `16_final_bw.png`, plus a
 `12_histogram_comparison.png`) so individual DIP techniques can be
 demonstrated separately during lab evaluation.
 
