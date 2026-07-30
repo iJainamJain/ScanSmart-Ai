@@ -74,7 +74,7 @@ def run_pipeline(image_path: str, manual_corners: np.ndarray | None = None) -> P
     save_stage(output_dir, "06_cleaned_mask", cleaned_mask)
 
     image_area = resized.shape[0] * resized.shape[1]
-    document_corners = manual_corners if manual_corners is not None else find_document_contour(cleaned_mask, image_area)
+    document_corners = manual_corners if manual_corners is not None else find_document_contour(cleaned_mask, image_area, gray)
 
     if document_corners is not None:
         boundary_preview = resized.copy()
