@@ -50,6 +50,67 @@ useful for debugging or when detection picks the wrong region.
   - `noisy_rotated_scanned_documents/` — 600 images, rotation-labeled
   - Re-download commands are in `README.md` if these go missing locally.
 
+## Branch: `feature/illumination-flattening` (not merged)
+
+Adds shadow / uneven-lighting removal via the illumination-reflectance model
+(`I = R·L`, estimate `L` by grey-scale morphological closing, divide it out),
+plus the OCR error-rate harness used to prove it works. **On by default**;
+`main.py --no-flatten` compares against the plain pipeline. `main` is
+untouched.
+
+Measured on 41 real photos: final ink coverage 8.9% → 11.0%, median ratio
+1.26, two images losing >30% (one a blank close-up where the number is
+meaningless). On the biggest gain it recovers shadowed text the plain
+pipeline loses entirely; on the biggest loss it sheds line noise while
+leaving text legible.
+
+### Two bugs found, both by measuring rather than looking
+
+1. **The synthetic benchmark was unrepresentative and inverted its own
+   conclusion.** It rendered ink at 0.24 of the paper level; real handwriting
+   sits at 0.41–0.74. That one constant made the benchmark endorse a
+   configuration that erased real handwriting. Now calibrated to 0.66.
+2. **Double-brightening destroyed the ink.** Flattening leaves paper near
+   255, and `enhance()` then applied its brightness/contrast lift on top,
+   saturating the page. Real-photo ink coverage: 10.4% baseline → **1.4%**
+   with the lift → 10.6% without. `enhance(..., illumination_normalized=True)`
+   skips it; both bugs are pinned by regression tests.
+
+### Claims from earlier in this project that are now known WRONG
+
+- *"Flattening suppresses the notebook's ruled lines while keeping
+  handwriting."* **False.** That was bug 2 destroying everything; what
+  survived merely resembled line-free handwriting. With the bug fixed the
+  ruled lines remain. Do not repeat this claim in the report or viva.
+- The first CER table (clean 0.040 → 0.027 etc.) was measured against the
+  unrepresentative benchmark. Superseded by the table in the README.
+
+### What is worth doing next on this branch
+
+1. **Real-photo CER.** The harness supports `ocr_eval.py --real <folder>`
+   with `<name>.gt.txt` files, but it has never been run on real data,
+   because the dataset is handwriting and Tesseract cannot score it. Needs a
+   handful of **printed** pages photographed under shadow. This is the one
+   remaining gap between "measured on synthetic" and "measured on reality".
+2. **Homomorphic filtering as a comparison arm** (log → FFT → Butterworth
+   high-pass → inverse → exp). Currently the project demonstrates no
+   frequency-domain processing at all, and a measured method-vs-method
+   comparison is worth more at a viva than either method alone.
+3. **A safety gate** — flattening is currently unconditional. Skipping it
+   when `illumination_unevenness()` is already low would make it a no-op on
+   evenly lit pages by construction rather than by luck.
+
+### Method note that keeps paying off
+
+Five invented image-quality metrics have now been built and **discarded**
+here after failing validation: texture contamination, crop-area fraction,
+border brightness, illumination uniformity (circular by construction — it
+measures that the division happened, not that it helped), and pixel
+disagreement. The only measure that has survived is CER, and the reason is
+structural: its ground truth comes from outside the system. Prefer external
+ground truth; if a metric can only be computed from the pipeline's own
+output, be suspicious of it.
+
 ## Status correction (read this before trusting the sections below)
 
 The "Recently Completed" notes further down were written optimistically and
