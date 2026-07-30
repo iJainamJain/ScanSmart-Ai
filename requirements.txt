@@ -4,3 +4,4 @@ matplotlib>=3.8,<4
 pillow>=10.2,<11
 scikit-image>=0.22,<0.23
 pytest>=8.0,<9
+kaggle>=1.6,<3

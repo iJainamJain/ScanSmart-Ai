@@ -43,7 +43,8 @@ dip proj/
 │   ├── ocr/            # Tesseract OCR (future)
 │   └── pdf/            # PDF export (future)
 ├── dataset/
-│   ├── raw/            # Original sample document photos
+│   ├── raw/            # Self-captured document photos (see docs/dataset.md)
+│   ├── external/        # Downloaded Kaggle datasets (gitignored)
 │   └── processed/      # Pipeline outputs used for evaluation
 ├── outputs/             # Per-run intermediate stage images (gitignored)
 ├── tests/               # Unit tests per module

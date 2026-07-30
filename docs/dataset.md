@@ -33,20 +33,31 @@ on cluttered backgrounds — a case the public sets below don't cover well.
 Public datasets above are flat, pre-scanned pages — they don't have the
 tilted-photo-on-a-cluttered-background conditions that document boundary
 detection and perspective correction are actually built to handle. To
-cover that, the team is capturing its own set of ~20–30 phone photos:
+cover that, the team is capturing its own set:
 
+- **Target:** 300 images minimum — 100 each from Jainam, Dhanush, and
+  Vivek.
 - Documents (receipts, notes, printed pages, assignments, bills,
   certificates, book pages) photographed on varied surfaces/backgrounds.
 - Deliberate variation: tilt/rotation, perspective angle, shadows/uneven
   lighting, different document sizes.
-- Stored in `dataset/raw/`, named descriptively (e.g.
-  `raw/receipt_shadow_01.jpg`, `raw/notes_tilted_03.jpg`) so the variation
-  category is visible from the filename during evaluation.
+- Uploaded to a shared team Drive folder, then merged into `dataset/raw/`.
+- **Naming convention:** `raw/<contributor>_<type>_<variation>_<nn>.jpg`,
+  e.g. `raw/jainam_receipt_shadow_01.jpg`,
+  `raw/dhanush_notes_tilted_03.jpg`, `raw/vivek_book_lowlight_02.jpg` — the
+  contributor prefix avoids filename collisions when merging three
+  people's uploads, and the type/variation stays visible for evaluation.
 - **License:** owned by the project team, used for educational purposes
   only within this course project.
 - **Used for:** the core document-detection → perspective-transform →
   flattening pipeline stages, and as the primary demo set for lab
   evaluation.
+- **Rollout:** development doesn't wait on all 300 — an initial ~20–30
+  images (from whoever delivers first) is enough to drive and debug the
+  detection/perspective pipeline now. The pipeline is classical
+  (rule-based OpenCV, not a trained model), so folding in the remaining
+  images later is a zero-cost drop into `dataset/raw/` — no retraining or
+  code changes required, just re-running `main.py` over the larger set.
 
 ## Layout
 
