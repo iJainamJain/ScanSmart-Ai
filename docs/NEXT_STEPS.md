@@ -60,24 +60,19 @@ The boundary detection logic in `src/detection/contours.py` (`find_document_cont
 - Passed the grayscale image to `find_document_contour` to enable brightness and texture calculations.
 - **Results:** Full batch test on 31 images in `dataset/raw/` confirmed the fix. 4 out of 5 wrong-region failures (`06, 12, 18, 28`) were perfectly corrected (`08` is unfixable). Loose crops (`05, 09, 13, 20, 24`) were successfully tightened. No regressions were introduced in the existing 26 correct detections. 
 
-## Immediate next task: Phase 7 (GUI / camera capture / preview+edit UI)
+## Recently Completed: Phase 7 (GUI / camera capture / preview+edit UI)
 
-Now that the core processing pipeline is reliable and boundary detection is fixed, it is time to build the user interface.
+A full Streamlit application has been implemented in `app/main.py`. This app wraps the core pipeline and allows users to:
+1. Upload or capture an image.
+2. Preview the auto-detected boundary.
+3. Manually override the crop region by clicking 4 points (using `streamlit-image-coordinates`).
+4. Execute the pipeline and export the processed document as a downloadable PDF.
 
-**Guidelines for the UI:**
-- Build a lightweight **Streamlit** (or similar web/desktop) UI as recommended in `docs/proposal.md`.
-- **Do NOT build a native mobile app**. Mobile is explicitly out of scope for the graded semester deliverable (see the "Product vision" section in `docs/proposal.md`), even though the team's long-term product vision includes it.
-- The UI should ideally allow a user to:
-  1. Upload or capture an image.
-  2. Preview the automatically detected boundary.
-  3. Optionally edit/adjust the 4 corners manually (similar to how `--corners` works in the CLI).
-  4. Run the rest of the pipeline and export the final PDF.
-
-## Pending Tasks (Data Collection & OCR)
+## Immediate Next Tasks (Phase 8 & Data Collection)
 
 - **Dataset Expansion:** Once Dhanush's and Vivek's photos land (target: 300 total, 100 each), merge them into `dataset/raw/` following the `raw/<contributor>_<type>_<variation>_<nn>.jpg` convention (see `docs/dataset.md`).
 - **Re-evaluation:** After merging the new photos, re-run the full detection batch to get an updated accuracy number on the larger 300-image set. Do not overfit tuning to the first 31 images.
-- **Phase 8 (OCR, searchable PDF):** Optional stretch goal to be tackled after the GUI is fully functional.
+- **Phase 8 (OCR, searchable PDF):** Integrate OCR (e.g., PyTesseract) into the pipeline to make the exported PDFs searchable.
 
 ## Git workflow notes
 
