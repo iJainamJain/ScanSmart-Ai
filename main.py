@@ -18,6 +18,9 @@ import numpy as np
 from src.detection.contours import find_document_contour
 from src.detection.edges import denoise, detect_edges, to_grayscale
 from src.enhancement.basic import enhance_document
+from src.enhancement.contrast import adjust_brightness_contrast
+from src.enhancement.histogram import save_histogram_comparison
+from src.enhancement.sharpen import sharpen
 from src.perspective.transform import four_point_transform
 from src.preprocessing.loader import load_image, resize_image
 from src.segmentation.threshold import clean_mask, segment_paper
@@ -80,11 +83,23 @@ def run_pipeline(image_path: str, manual_corners: np.ndarray | None = None) -> P
 
     save_stage(output_dir, "08_flattened", flattened)
 
-    enhanced = enhance_document(flattened)
-    save_stage(output_dir, "09_final", enhanced)
+    contrast_adjusted = adjust_brightness_contrast(flattened, brightness=10, contrast=1.15)
+    save_stage(output_dir, "09_contrast_adjusted", contrast_adjusted)
+
+    sharpened = sharpen(contrast_adjusted)
+    save_stage(output_dir, "10_sharpened", sharpened)
+
+    enhanced = enhance_document(sharpened)
+    save_stage(output_dir, "11_final", enhanced)
+
+    save_histogram_comparison(
+        to_grayscale(flattened) if flattened.ndim == 3 else flattened,
+        enhanced,
+        output_dir / "12_histogram_comparison.png",
+    )
 
     print(f"Done. Stages saved to {output_dir}/")
-    return output_dir / "09_final.png"
+    return output_dir / "11_final.png"
 
 
 def main() -> None:

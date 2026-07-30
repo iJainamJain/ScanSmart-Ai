@@ -9,7 +9,7 @@ Built incrementally over a semester to demonstrate: image enhancement,
 filtering/noise removal, segmentation, thresholding, edge detection,
 morphological operations, geometric transforms, and image compression.
 
-## Current status: Phase 1–3 MVP
+## Current status: Phase 1–4
 
 The pipeline currently:
 
@@ -17,15 +17,25 @@ The pipeline currently:
 2. Resizes it (longer side capped at 1500px)
 3. Converts to grayscale
 4. Denoises with Gaussian blur
-5. Detects edges (Canny)
-6. Finds contours and the largest 4-point document boundary
-7. Applies a perspective transform to flatten the document
-8. Applies basic contrast enhancement (CLAHE)
-9. Saves every intermediate stage for inspection
+5. Detects edges (Canny) - saved for inspection; actual boundary detection
+   uses Otsu segmentation instead (see below)
+6. Segments the paper region via Otsu thresholding and morphological
+   cleanup (close + open), then finds its 4-point boundary
+7. Applies a perspective transform to flatten the document (or accepts
+   manually-specified corners via `--corners`, see Usage)
+8. Adjusts brightness/contrast, sharpens (unsharp masking), then applies
+   CLAHE for adaptive contrast
+9. Saves a before/after histogram comparison
+10. Saves every intermediate stage for inspection
+
+Boundary detection is verified at 26/31 correct on real self-captured
+photos (see [docs/dataset.md](docs/dataset.md)); known failure mode and
+planned fix are tracked as a backlog item.
 
 Not yet implemented (planned for later phases — see [docs/proposal.md](docs/proposal.md)):
-adaptive/Otsu thresholding, morphological cleanup, compression comparison,
-PDF export, GUI, OCR.
+final-output binarization (adaptive/Otsu thresholding as a B&W scan mode),
+morphological cleanup of that output, compression comparison, PDF export,
+GUI, OCR.
 
 ## Project structure
 
@@ -71,8 +81,15 @@ py -3.12 main.py dataset/raw/sample.jpg
 ```
 
 Each pipeline stage is saved to `outputs/<image-name>/` (e.g.
-`01_resized.png`, `02_grayscale.png`, ... `08_final.png`) so individual DIP
-techniques can be demonstrated separately during lab evaluation.
+`01_resized.png`, `02_grayscale.png`, ... `11_final.png`, plus a
+`12_histogram_comparison.png`) so individual DIP techniques can be
+demonstrated separately during lab evaluation.
+
+If detection picks the wrong region, override it manually:
+
+```bash
+py -3.12 main.py dataset/raw/sample.jpg --corners "50,40 900,60 880,1200 40,1180"
+```
 
 ## Dataset
 
