@@ -120,3 +120,6 @@ extract into those same two subfolders.)
 See [docs/proposal.md](docs/proposal.md) for the full phase-by-phase plan
 (document detection → perspective correction → enhancement → segmentation &
 morphology → compression & export → application UI → OCR).
+
+For the current work-in-progress item and exactly what to do next, see
+[docs/NEXT_STEPS.md](docs/NEXT_STEPS.md).
