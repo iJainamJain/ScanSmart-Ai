@@ -9,7 +9,7 @@ Built incrementally over a semester to demonstrate: image enhancement,
 filtering/noise removal, segmentation, thresholding, edge detection,
 morphological operations, geometric transforms, and image compression.
 
-## Current status: Phase 1–5
+## Current status: Phase 1–6
 
 The pipeline currently:
 
@@ -30,7 +30,10 @@ The pipeline currently:
     thresholding (all three saved for comparison); adaptive thresholding
     feeds the final B&W scanner-style output
 11. Cleans that binarized output with morphological opening + closing
-12. Saves every intermediate stage for inspection
+12. Saves a JPEG-vs-PNG compression comparison (multiple JPEG quality
+    levels) with a size/ratio report
+13. Exports the final scan as a single-page A4 PDF
+14. Saves every intermediate stage for inspection
 
 Boundary detection is verified at 26/31 correct (right region picked) on
 real self-captured photos, though several of those 26 include a looser
@@ -39,7 +42,7 @@ crop margin than ideal (visible once binarized) - see
 planned precision fix.
 
 Not yet implemented (planned for later phases — see [docs/proposal.md](docs/proposal.md)):
-compression comparison, PDF export, GUI, OCR.
+GUI, camera capture, multi-page documents, OCR.
 
 ## Project structure
 
@@ -53,9 +56,9 @@ dip proj/
 │   ├── enhancement/    # CLAHE / contrast / brightness / sharpening / histograms
 │   ├── segmentation/   # Global / Otsu / adaptive thresholding
 │   ├── morphology/     # Erosion/dilation/opening/closing
-│   ├── compression/    # JPEG/PNG/PDF size comparison (future)
+│   ├── compression/    # JPEG/PNG size comparison
 │   ├── ocr/            # Tesseract OCR (future)
-│   └── pdf/            # PDF export (future)
+│   └── pdf/            # Single-page PDF export
 ├── dataset/
 │   ├── raw/            # Self-captured document photos (see docs/dataset.md)
 │   ├── external/        # Downloaded Kaggle datasets (gitignored)
@@ -85,8 +88,9 @@ py -3.12 main.py dataset/raw/sample.jpg
 ```
 
 Each pipeline stage is saved to `outputs/<image-name>/` (e.g.
-`01_resized.png`, `02_grayscale.png`, ... `16_final_bw.png`, plus a
-`12_histogram_comparison.png`) so individual DIP techniques can be
+`01_resized.png`, `02_grayscale.png`, ... `16_final_bw.png`, a
+`12_histogram_comparison.png`, a `17_compression/` folder with a size
+report, and an `18_scan.pdf`) so individual DIP techniques can be
 demonstrated separately during lab evaluation.
 
 If detection picks the wrong region, override it manually:

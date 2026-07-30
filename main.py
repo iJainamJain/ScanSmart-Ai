@@ -15,6 +15,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from src.compression.compare import compare_compression, save_compression_report
 from src.detection.contours import find_document_contour
 from src.detection.edges import denoise, detect_edges, to_grayscale
 from src.enhancement.basic import enhance_document
@@ -22,6 +23,7 @@ from src.enhancement.contrast import adjust_brightness_contrast
 from src.enhancement.histogram import save_histogram_comparison
 from src.enhancement.sharpen import sharpen
 from src.morphology.operations import closing, opening
+from src.pdf.export import export_single_page_pdf
 from src.perspective.transform import four_point_transform
 from src.preprocessing.loader import load_image, resize_image
 from src.segmentation.threshold import (
@@ -113,6 +115,12 @@ def run_pipeline(image_path: str, manual_corners: np.ndarray | None = None) -> P
 
     morph_cleaned = closing(opening(adaptive, kernel_size=3), kernel_size=3)
     save_stage(output_dir, "16_final_bw", morph_cleaned)
+
+    compression_sizes = compare_compression(enhanced, output_dir / "17_compression")
+    save_compression_report(compression_sizes, output_dir / "17_compression" / "report.txt")
+
+    pdf_path = output_dir / "18_scan.pdf"
+    export_single_page_pdf(output_dir / "16_final_bw.png", pdf_path)
 
     print(f"Done. Stages saved to {output_dir}/")
     return output_dir / "16_final_bw.png"
