@@ -2,7 +2,13 @@
 
 ## Team
 
-2-person Digital Image Processing mini project.
+3-person Digital Image Processing mini project.
+
+| Name | Roll Number |
+|------|--------------|
+| Jainam Jain | 23108B0084 |
+| Dhanush Chowke | 23108B0080 |
+| Vivek Jaiswal | 23108B0082 |
 
 ## Problem statement
 
@@ -11,6 +17,18 @@ tilted, perspective-distorted, unevenly lit, and cluttered with background.
 SmartScan AI processes such a photo and produces a clean, flat,
 scanner-quality digital document using classical image-processing
 techniques, without relying on black-box ML models for the core pipeline.
+
+## Product vision (future goal, beyond this course)
+
+Long-term, SmartScan AI aims to grow into a mobile-first document scanner
+app — capture a document with a phone camera, get an automatic scan with
+OCR-based text extraction and searchable PDF export, similar in spirit to
+commercial scanner apps. This is **not** part of the graded semester scope:
+this course project builds and demonstrates the underlying DIP pipeline in
+Python, which would become the processing engine behind that future app.
+Keeping the two separate lets us focus semester effort on the DIP
+techniques actually being evaluated (filtering, segmentation, morphology,
+transforms, compression) rather than mobile app development.
 
 ## Objectives
 
@@ -58,6 +76,9 @@ Final Scanner-Like Output → Export (Image/PDF)
 | 8 (optional) | OCR, searchable PDF, document management, additional filters |
 
 Phases 1–3 are implemented as of this MVP (see [README.md](../README.md)).
+Phase 7 targets a desktop/web UI (e.g. Streamlit) to demo the pipeline
+within the semester; a native mobile app is out of scope (see Product
+vision above) but would reuse this same pipeline as its backend.
 
 ## Evaluation metrics
 

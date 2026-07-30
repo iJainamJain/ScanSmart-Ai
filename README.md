@@ -75,8 +75,16 @@ techniques can be demonstrated separately during lab evaluation.
 
 ## Dataset
 
-See [docs/dataset.md](docs/dataset.md) for sources, licensing, and the
-target set of ~20–50 sample document images.
+See [docs/dataset.md](docs/dataset.md) for full sources and licensing.
+Summary: two public Kaggle datasets (for enhancement/segmentation/
+morphology/compression) plus a self-captured set in `dataset/raw/` (for
+document detection and perspective correction).
+
+```bash
+# requires a Kaggle account + API token (~/.kaggle/kaggle.json)
+kaggle datasets download -d suvroo/scanned-images-dataset-for-ocr-and-vlm-finetuning -p dataset/external --unzip
+kaggle datasets download -d sthabile/noisy-and-rotated-scanned-documents -p dataset/external --unzip
+```
 
 ## Roadmap
 

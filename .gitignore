@@ -10,6 +10,10 @@ venv/
 outputs/*
 !outputs/.gitkeep
 
+# Downloaded external Kaggle datasets (too large to commit, see docs/dataset.md)
+dataset/external/*
+!dataset/external/.gitkeep
+
 # OS
 .DS_Store
 Thumbs.db
