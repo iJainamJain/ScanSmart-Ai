@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 import cv2
+import numpy as np
 
 from src.detection.contours import find_document_contour
 from src.detection.edges import denoise, detect_edges, to_grayscale
@@ -29,7 +30,15 @@ def save_stage(output_dir: Path, stage_name: str, image) -> None:
     cv2.imwrite(str(output_dir / f"{stage_name}.png"), image)
 
 
-def run_pipeline(image_path: str) -> Path:
+def parse_corners(text: str) -> np.ndarray:
+    """Parse '--corners' CLI input like 'x1,y1 x2,y2 x3,y3 x4,y4' into a 4x2 array."""
+    points = [tuple(map(float, pair.split(","))) for pair in text.split()]
+    if len(points) != 4:
+        raise ValueError("--corners needs exactly 4 'x,y' points")
+    return np.array(points, dtype=np.float32)
+
+
+def run_pipeline(image_path: str, manual_corners: np.ndarray | None = None) -> Path:
     image_path = Path(image_path)
     output_dir = OUTPUT_ROOT / image_path.stem
 
@@ -53,7 +62,7 @@ def run_pipeline(image_path: str) -> Path:
     save_stage(output_dir, "06_cleaned_mask", cleaned_mask)
 
     image_area = resized.shape[0] * resized.shape[1]
-    document_corners = find_document_contour(cleaned_mask, image_area)
+    document_corners = manual_corners if manual_corners is not None else find_document_contour(cleaned_mask, image_area)
 
     if document_corners is not None:
         boundary_preview = resized.copy()
@@ -81,9 +90,17 @@ def run_pipeline(image_path: str) -> Path:
 def main() -> None:
     parser = argparse.ArgumentParser(description="SmartScan AI document scanning pipeline")
     parser.add_argument("image", help="Path to an input document image")
+    parser.add_argument(
+        "--corners",
+        help="Manually specify document corners, bypassing auto-detection: "
+        "'x1,y1 x2,y2 x3,y3 x4,y4' in resized-image pixel coordinates "
+        "(any point order - they get sorted internally). Use this when "
+        "detection picks the wrong region.",
+    )
     args = parser.parse_args()
 
-    run_pipeline(args.image)
+    manual_corners = parse_corners(args.corners) if args.corners else None
+    run_pipeline(args.image, manual_corners=manual_corners)
 
 
 if __name__ == "__main__":
