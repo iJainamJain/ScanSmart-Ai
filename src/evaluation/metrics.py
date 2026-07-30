@@ -19,16 +19,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from src.detection.contours import find_document_contour
-from src.detection.edges import denoise, to_grayscale
-from src.detection.refine import refine_quad
-from src.enhancement.basic import enhance_document
-from src.enhancement.contrast import adjust_brightness_contrast
-from src.enhancement.sharpen import sharpen
-from src.morphology.operations import closing, opening
-from src.perspective.transform import four_point_transform
+from src.pipeline import detect_document, scan_page
 from src.preprocessing.loader import load_image, resize_image
-from src.segmentation.threshold import adaptive_threshold, clean_mask, segment_paper
 
 
 @dataclass
@@ -49,18 +41,10 @@ def evaluate_image(image_path: Path) -> ImageMetrics:
     started = time.perf_counter()
     original = load_image(image_path)
     resized, _ = resize_image(original)
-    gray = to_grayscale(resized)
-    blurred = denoise(gray)
 
-    mask = clean_mask(segment_paper(blurred))
     image_area = resized.shape[0] * resized.shape[1]
-    quad = find_document_contour(mask, image_area, gray)
-    if quad is not None:
-        quad = refine_quad(quad, gray)
-
-    flattened = four_point_transform(resized, quad) if quad is not None else resized
-    enhanced = enhance_document(sharpen(adjust_brightness_contrast(flattened, 10, 1.15)))
-    final = closing(opening(adaptive_threshold(enhanced), kernel_size=3), kernel_size=3)
+    quad = detect_document(resized)
+    enhanced, final = scan_page(resized, quad)
     elapsed = time.perf_counter() - started
 
     png_bytes = len(cv2.imencode(".png", enhanced)[1])
