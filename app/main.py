@@ -14,6 +14,7 @@ sys.path.append(str(project_root))
 
 from src.detection.contours import find_document_contour
 from src.detection.edges import denoise, to_grayscale
+from src.detection.refine import refine_quad
 from src.enhancement.basic import enhance_document
 from src.enhancement.contrast import adjust_brightness_contrast
 from src.enhancement.sharpen import sharpen
@@ -62,6 +63,8 @@ if image_file is not None:
     image_area = resized.shape[0] * resized.shape[1]
     
     auto_corners = find_document_contour(cleaned_mask, image_area, gray)
+    if auto_corners is not None:
+        auto_corners = refine_quad(auto_corners, gray)
     
     st.subheader("1. Boundary Detection")
     st.write("If the red boundary is incorrect, click 4 points on the image (in any order) to manually set the corners.")

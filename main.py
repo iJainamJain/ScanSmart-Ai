@@ -18,6 +18,7 @@ import numpy as np
 from src.compression.compare import compare_compression, save_compression_report
 from src.detection.contours import find_document_contour
 from src.detection.edges import denoise, detect_edges, to_grayscale
+from src.detection.refine import refine_quad
 from src.enhancement.basic import enhance_document
 from src.enhancement.contrast import adjust_brightness_contrast
 from src.enhancement.histogram import save_histogram_comparison
@@ -74,7 +75,12 @@ def run_pipeline(image_path: str, manual_corners: np.ndarray | None = None) -> P
     save_stage(output_dir, "06_cleaned_mask", cleaned_mask)
 
     image_area = resized.shape[0] * resized.shape[1]
-    document_corners = manual_corners if manual_corners is not None else find_document_contour(cleaned_mask, image_area, gray)
+    if manual_corners is not None:
+        document_corners = manual_corners
+    else:
+        document_corners = find_document_contour(cleaned_mask, image_area, gray)
+        if document_corners is not None:
+            document_corners = refine_quad(document_corners, gray)
 
     if document_corners is not None:
         boundary_preview = resized.copy()
