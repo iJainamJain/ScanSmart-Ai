@@ -28,7 +28,7 @@ needs:
 
 | file | why it is needed |
 |------|------------------|
-| `requirements.txt` | Python dependencies. Uses `opencv-python-headless` — the standard build needs libGL, which the cloud image does not have, and the project makes no `cv2` GUI calls. |
+| `requirements.txt` | Runtime dependencies only. Uses `opencv-python-headless` — the standard build needs libGL, which the cloud image does not have, and the project makes no `cv2` GUI calls. Upper version bounds are deliberately loose: pinning below a major version (`numpy<2`, `pillow<11`) leaves no prebuilt wheel on the platform's current Python 3.14, so pip compiles from source and fails on missing system headers. Dev tooling lives in `requirements-dev.txt` so deploy builds stay fast. |
 | `packages.txt` | System packages. Installs `tesseract-ocr`, the OCR binary; without it searchable-PDF export silently falls back to image-only. |
 | `.streamlit/config.toml` | 30 MB upload cap, static file serving for the PWA assets. |
 

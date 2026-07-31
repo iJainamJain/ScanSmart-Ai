@@ -1,13 +1,20 @@
+# Runtime dependencies. Kept deliberately lean because this is also what
+# Streamlit Community Cloud installs on every deploy.
+#
+# Upper bounds are loose on purpose: pinning below a major version (numpy<2,
+# pillow<11) leaves no prebuilt wheel on newer Python runtimes, so pip falls
+# back to compiling from source and fails on missing system headers. Streamlit
+# Cloud currently defaults to Python 3.14, where that broke the build.
+#
+# Development-only tools live in requirements-dev.txt.
+
 # headless: no libGL on Streamlit Cloud, and the project makes no cv2 GUI calls
-opencv-python-headless>=4.9,<5
-numpy>=1.26,<2
-matplotlib>=3.8,<4
-pillow>=10.2,<11
-scikit-image>=0.22,<0.23
-pytest>=8.0,<9
-kaggle>=1.6,<3
-reportlab>=4.1,<5
-streamlit>=1.31.0
-streamlit-image-coordinates>=0.1.7
+opencv-python-headless>=4.9
+numpy>=1.26
+pillow>=10.2
+matplotlib>=3.8
+reportlab>=4.1
+pypdf>=4.0
 pytesseract>=0.3.10
-pypdf>=4.0,<7
+streamlit>=1.31
+streamlit-image-coordinates>=0.1.7

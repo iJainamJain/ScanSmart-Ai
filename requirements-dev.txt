@@ -1,0 +1,8 @@
+# Development and evaluation extras, on top of the runtime set.
+# Not installed on Streamlit Cloud - keeping them out of requirements.txt
+# keeps deploy builds fast and avoids compiling packages the app never imports.
+
+-r requirements.txt
+
+pytest>=8.0
+kaggle>=1.6          # only needed to download the external datasets
