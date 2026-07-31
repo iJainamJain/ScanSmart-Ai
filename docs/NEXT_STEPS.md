@@ -96,9 +96,14 @@ leaving text legible.
    high-pass → inverse → exp). Currently the project demonstrates no
    frequency-domain processing at all, and a measured method-vs-method
    comparison is worth more at a viva than either method alone.
-3. **A safety gate** — flattening is currently unconditional. Skipping it
-   when `illumination_unevenness()` is already low would make it a no-op on
-   evenly lit pages by construction rather than by luck.
+3. ~~A safety gate skipping flattening on evenly lit pages.~~ **Investigated
+   and rejected on evidence.** Across 40 real photos the correlation between
+   illumination unevenness and benefit is −0.03, and the *most evenly lit*
+   bucket showed the *highest* mean gain (ink ratio 1.30 versus 1.11 for the
+   most uneven). Gating would skip flattening exactly where it helps most.
+   The benefit is not mainly "removing unevenness" — it is normalising the
+   paper to a consistent white level, which helps the adaptive threshold on
+   any page. Do not add this gate without new evidence.
 
 ### Method note that keeps paying off
 
