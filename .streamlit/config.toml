@@ -1,0 +1,14 @@
+[server]
+# Phone photos are routinely 8-12MP; the 200MB default is generous but the
+# pipeline downscales to 1500px on load anyway.
+maxUploadSize = 30
+enableXsrfProtection = true
+# Serves app/static/* at /app/static/* - needed for the PWA manifest and icons.
+enableStaticServing = true
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#1a1a2e"

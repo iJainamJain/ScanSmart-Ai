@@ -108,6 +108,19 @@ If detection picks the wrong region, override it manually:
 py -3.12 main.py dataset/raw/sample.jpg --corners "50,40 900,60 880,1200 40,1180"
 ```
 
+## Running the app
+
+```bash
+py -3.12 -m streamlit run app/main.py
+```
+
+Upload a photo or use the camera, correct the detected corners if needed, add
+pages, and export a PDF (searchable when Tesseract is available). It works in
+a phone browser and installs to the home screen.
+
+Deployment instructions — including the one-off Streamlit Cloud setup — are in
+[docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## Evaluation
 
 ```bash

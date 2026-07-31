@@ -19,7 +19,30 @@ from src.pdf.export import (
 from src.pipeline import detect_document, scan_page
 from src.preprocessing.loader import resize_image
 
-st.set_page_config(page_title="SmartScan AI", layout="centered")
+st.set_page_config(
+    page_title="SmartScan AI",
+    page_icon="app/static/icon-192.png",
+    layout="centered",
+)
+
+# Installable-to-home-screen support. Streamlit owns the page <head>, so these
+# tags are injected into the DOM instead; browsers honour a manifest link found
+# there. This gives the icon and a chrome-free standalone window - it is not a
+# full PWA (no service worker, so no offline use), which Streamlit's architecture
+# does not allow without patching its served HTML.
+st.markdown(
+    """
+    <link rel="manifest" href="app/static/manifest.json">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SmartScan">
+    <link rel="apple-touch-icon" href="app/static/icon-192.png">
+    """,
+    unsafe_allow_html=True,
+)
+
 st.title("SmartScan AI")
 st.write("Scan document photos and export them as a single PDF.")
 
