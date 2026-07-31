@@ -178,6 +178,34 @@ Two non-obvious steps were needed to get there, both found by measurement:
 
 Both are pinned by regression tests.
 
+### Two methods compared: morphological vs homomorphic
+
+Illumination correction is implemented twice, deliberately, so the methods can
+be compared rather than one asserted to be better:
+
+- **Morphological** (`src/enhancement/illumination.py`) — estimate the
+  illumination field with a grey-scale closing and divide it out. Non-linear,
+  so it holds a hard shadow edge in place.
+- **Homomorphic** (`src/enhancement/homomorphic.py`) — `log → FFT →
+  gain-shifted Butterworth high-pass → inverse FFT → exp`. Taking logarithms
+  turns `I = R·L` into a sum, which a linear transform can then separate by
+  frequency.
+
+Mean CER across the six benchmark cases: baseline **0.350**, morphological
+**0.210**, homomorphic **0.369**.
+
+The interesting part is *where* they differ. Homomorphic is **better at the
+narrow job it was designed for** — a pure lighting gradient (0.031 vs 0.080)
+or a cast shadow (0.040 vs 0.094) — but it boosts high frequencies by
+construction, and noise is high-frequency, so it collapses entirely on noisy
+pages (CER 1.000 where morphological reaches 0.161). Giving it the same
+bilateral denoising rescues the noisy cases (1.000 → 0.295) but breaks clean
+ones (ruled 0.094 → 1.000), showing it is unusually sensitive to how its input
+is conditioned.
+
+Morphological is therefore what the pipeline uses; homomorphic stays as a
+measured comparison arm in `ocr_eval.py`.
+
 ## Dataset
 
 See [docs/dataset.md](docs/dataset.md) for full sources and licensing.

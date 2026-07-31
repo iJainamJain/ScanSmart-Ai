@@ -19,6 +19,7 @@ from pathlib import Path
 
 import cv2
 
+from src.enhancement.homomorphic import homomorphic_filter
 from src.enhancement.illumination import flatten_illumination, illumination_unevenness
 from src.evaluation.ocr_accuracy import (
     compare_variants,
@@ -44,14 +45,22 @@ SYNTHETIC_CASES = {
 def variants_for(gray):
     """The two pipelines under comparison, both taken through to final B&W.
 
-    The flattened arm skips the brightness/contrast lift, which flattening
-    has already made redundant - leaving it in saturates the page and erases
-    faint ink (see src.pipeline.enhance).
+    Three arms: the plain pipeline, morphological illumination flattening
+    (what the pipeline actually uses), and homomorphic filtering as a
+    frequency-domain alternative, kept so the two illumination-correction
+    methods can be compared rather than one asserted to be better.
+
+    Both corrected arms skip the brightness/contrast lift, which normalising
+    the illumination has already made redundant - leaving it in saturates the
+    page and erases faint ink (see src.pipeline.enhance).
     """
     return {
         "baseline": binarize(enhance(gray)),
         "flattened": binarize(
             enhance(flatten_illumination(gray), illumination_normalized=True)
+        ),
+        "homomorphic": binarize(
+            enhance(homomorphic_filter(gray), illumination_normalized=True)
         ),
     }
 
