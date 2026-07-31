@@ -86,11 +86,19 @@ if image_file is not None:
         if 0 < pending < 4:
             st.warning(f"Clicked {pending}/4 points...")
 
+    flatten_lighting = st.checkbox(
+        "Remove shadows and uneven lighting",
+        value=True,
+        help="Estimates the illumination field and divides it out. Removes cast "
+        "shadows and lighting gradients, and recovers faint text the plain "
+        "pipeline misses.",
+    )
+
     if corners is None:
         st.info("Set all 4 corners to continue.")
     elif st.button("Add page to document", type="primary"):
         with st.spinner("Flattening and enhancing..."):
-            _, final_bw = scan_page(resized, corners)
+            _, final_bw = scan_page(resized, corners, flatten_lighting=flatten_lighting)
         st.session_state.pages.append({"name": image_file.name, "bw": final_bw})
         st.session_state.manual_corners = []
         st.session_state.last_click = None

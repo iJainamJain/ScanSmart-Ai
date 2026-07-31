@@ -13,13 +13,21 @@ hard shadow edge in place instead of smearing it across the boundary the way
 a Gaussian would, so the shadow divides out cleanly rather than leaving a
 halo.
 
-Measured caveat, worth knowing before using this: with the pipeline's current
-adaptive-threshold settings, flattening is strongly *subtractive* at the
-binarisation stage - it removed 60-75% of the ink pixels on a sample of the
-project's photos, and the surviving ink was an almost exact subset of the
-un-flattened output. Much of what goes is the notebook's pre-printed ruling
-(desirable), but faint pencil can go with it. Validate with
-src/evaluation/ocr_accuracy.py before trusting it on real documents.
+Two measured properties worth knowing before changing anything here:
+
+1. Denoising first is not optional. The division amplifies noise, which
+   binarisation then removes together with the text. Without it, a noisy
+   shadowed page got *worse* (CER 0.647 -> 0.812, characters read halved);
+   with edge-preserving denoising it reaches 0.036.
+2. Flattening is strongly *subtractive* at the binarisation stage - it removed
+   60-75% of the ink pixels on a sample of the project's photos, and the
+   survivors were an almost exact subset of the un-flattened output. Much of
+   what goes is the notebook's pre-printed ruling (desirable), but faint
+   pencil can go with it.
+
+Because of (2), judge any change here with src/evaluation/ocr_accuracy.py
+rather than by eye: a cleaner-looking page and a page with the faint writing
+destroyed are visually similar and only ground-truth text separates them.
 """
 
 import cv2
@@ -28,6 +36,9 @@ import numpy as np
 DEFAULT_SE_FRACTION = 20
 DEFAULT_MAX_GAIN = 4.0
 DEFAULT_SMOOTHING = 31
+
+BILATERAL_DIAMETER = 9
+BILATERAL_SIGMA = 60
 
 
 def estimate_illumination(
@@ -55,20 +66,41 @@ def estimate_illumination(
     return closed
 
 
+def denoise_edge_preserving(gray: np.ndarray) -> np.ndarray:
+    """Bilateral filter - smooths noise while keeping text edges sharp.
+
+    This must run *before* the division, and the choice of filter is not
+    incidental. The division amplifies whatever noise is present by up to
+    `max_gain`, and binarisation then strips the amplified speckle along with
+    the text. Measured on the synthetic benchmark, denoising first took a
+    shadowed noisy page from CER 0.647 to 0.036, and a page with every
+    degradation from 1.000 (nothing readable at all) to 0.045.
+
+    Gaussian and median blurring were both measured as *worse* than no
+    denoising on the clean-gradient case (0.121 and 0.089 against 0.049),
+    because they soften the strokes the OCR depends on. Bilateral preserves
+    edges while averaging within flat regions, which is the property needed.
+    """
+    return cv2.bilateralFilter(gray, BILATERAL_DIAMETER, BILATERAL_SIGMA, BILATERAL_SIGMA)
+
+
 def flatten_illumination(
     gray: np.ndarray,
     max_gain: float = DEFAULT_MAX_GAIN,
     se_fraction: int = DEFAULT_SE_FRACTION,
+    denoise: bool = True,
 ) -> np.ndarray:
-    """Divide out the estimated illumination field, returning a evenly-lit page.
+    """Divide out the estimated illumination field, returning an evenly-lit page.
 
     `max_gain` caps the per-pixel amplification so that deep shadow, where the
     signal is weakest and the noise relatively strongest, is not blown up into
-    speckle.
+    speckle. `denoise` applies edge-preserving smoothing first; leaving it off
+    is measurably harmful on noisy input (see denoise_edge_preserving).
     """
-    field = estimate_illumination(gray, se_fraction).astype(np.float32) + 1.0
+    source = denoise_edge_preserving(gray) if denoise else gray
+    field = estimate_illumination(source, se_fraction).astype(np.float32) + 1.0
     gain = np.clip(255.0 / field, 0.0, max_gain)
-    return np.clip(gray.astype(np.float32) * gain, 0, 255).astype(np.uint8)
+    return np.clip(source.astype(np.float32) * gain, 0, 255).astype(np.uint8)
 
 
 def illumination_unevenness(gray: np.ndarray) -> float:

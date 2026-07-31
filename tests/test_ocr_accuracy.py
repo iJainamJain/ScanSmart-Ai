@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from src.enhancement.illumination import (
+    denoise_edge_preserving,
     estimate_illumination,
     flatten_illumination,
     illumination_unevenness,
@@ -108,13 +109,43 @@ def test_estimate_illumination_removes_text_but_keeps_the_paper_level():
     page, _ = render_text_page()
     field = estimate_illumination(page)
     # Text pixels are dark in the original and paper-coloured in the field.
-    assert page.min() < 100
-    assert field.min() > 150
+    paper_level = int(np.percentile(page, 90))
+    assert page.min() < paper_level - 30, "the rendered text is darker than the paper"
+    assert field.min() > page.min(), "closing should have removed the darkest strokes"
+    assert abs(int(field.mean()) - paper_level) < 25, "the field should sit at paper level"
 
 
 def test_estimate_illumination_rejects_a_colour_image():
     with pytest.raises(ValueError):
         estimate_illumination(np.zeros((50, 50, 3), np.uint8))
+
+
+def test_denoising_reduces_noise_but_keeps_text_contrast():
+    """Bilateral was chosen over Gaussian/median precisely because it smooths
+    flat regions without softening the strokes OCR depends on."""
+    page, _ = render_text_page()
+    rng = np.random.default_rng(1)
+    noisy = np.clip(page.astype(np.float32) + rng.normal(0, 12, page.shape), 0, 255).astype(np.uint8)
+
+    cleaned = denoise_edge_preserving(noisy)
+
+    flat_region = (slice(900, 1100), slice(600, 850))  # below the last line of text
+    assert cleaned[flat_region].std() < noisy[flat_region].std(), "noise should fall"
+    # Relative to the page's own ink, so this survives re-calibration of how
+    # faint the rendered text is.
+    paper_level = int(np.percentile(page, 90))
+    assert cleaned.min() < paper_level - 30, "text must stay clearly darker than paper"
+
+
+def test_flattening_denoises_by_default_and_can_be_turned_off():
+    page, _ = render_text_page()
+    rng = np.random.default_rng(2)
+    noisy = np.clip(page.astype(np.float32) + rng.normal(0, 14, page.shape), 0, 255).astype(np.uint8)
+
+    assert not np.array_equal(
+        flatten_illumination(noisy, denoise=True),
+        flatten_illumination(noisy, denoise=False),
+    )
 
 
 def test_flattening_leaves_an_already_even_page_roughly_alone():

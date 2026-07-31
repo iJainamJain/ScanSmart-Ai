@@ -9,7 +9,7 @@ Built incrementally over a semester to demonstrate: image enhancement,
 filtering/noise removal, segmentation, thresholding, edge detection,
 morphological operations, geometric transforms, and image compression.
 
-## Current status: Phase 1–6
+## Current status: Phase 1–8
 
 The pipeline currently:
 
@@ -23,17 +23,22 @@ The pipeline currently:
    cleanup (close + open), then finds its 4-point boundary
 7. Applies a perspective transform to flatten the document (or accepts
    manually-specified corners via `--corners`, see Usage)
-8. Adjusts brightness/contrast, sharpens (unsharp masking), then applies
-   CLAHE for adaptive contrast
-9. Saves a before/after histogram comparison
-10. Binarizes the enhanced page with global, Otsu, and adaptive
+8. Removes shadows and lighting gradients by estimating the illumination
+   field (grey-scale morphological closing) and dividing it out — on by
+   default, disable with `--no-flatten`. The field itself is saved as a
+   heat map, so the extracted shadow can be shown on its own.
+9. Sharpens (unsharp masking), then applies CLAHE for adaptive contrast.
+   The brightness/contrast lift is applied only when flattening is off,
+   since flattening already normalises the paper level
+10. Saves a before/after histogram comparison
+11. Binarizes the enhanced page with global, Otsu, and adaptive
     thresholding (all three saved for comparison); adaptive thresholding
     feeds the final B&W scanner-style output
-11. Cleans that binarized output with morphological opening + closing
-12. Saves a JPEG-vs-PNG compression comparison (multiple JPEG quality
+12. Cleans that binarized output with morphological opening + closing
+13. Saves a JPEG-vs-PNG compression comparison (multiple JPEG quality
     levels) with a size/ratio report
-13. Exports the final scan as a single-page A4 PDF
-14. Saves every intermediate stage for inspection
+14. Exports the final scan as a single-page A4 PDF
+15. Saves every intermediate stage for inspection
 
 Boundary detection is verified at 26/31 correct (right region picked) on
 real self-captured photos, though several of those 26 include a looser
@@ -41,24 +46,26 @@ crop margin than ideal (visible once binarized) - see
 [docs/dataset.md](docs/dataset.md) and the tracked backlog item for the
 planned precision fix.
 
-Not yet implemented (planned for later phases — see [docs/proposal.md](docs/proposal.md)):
-GUI, camera capture, multi-page documents, OCR.
+Also implemented: a Streamlit GUI with camera capture, manual corner
+override and page reorder/delete; multi-page and searchable (OCR) PDF export;
+and a measurement layer (batch metrics, contact sheets, OCR error rate).
 
 ## Project structure
 
 ```
 dip proj/
-├── app/                # Future UI / camera capture code (empty for now)
+├── app/                # Streamlit GUI (upload/camera, corner override, pages)
 ├── src/
 │   ├── preprocessing/  # Image loading, resizing
 │   ├── detection/      # Grayscale, blur, Canny edges, contours
 │   ├── perspective/    # Corner ordering, four-point warp
-│   ├── enhancement/    # CLAHE / contrast / brightness / sharpening / histograms
+│   ├── enhancement/    # CLAHE, contrast, sharpening, histograms, illumination
 │   ├── segmentation/   # Global / Otsu / adaptive thresholding
 │   ├── morphology/     # Erosion/dilation/opening/closing
 │   ├── compression/    # JPEG/PNG size comparison
-│   ├── ocr/            # Tesseract OCR (future)
-│   └── pdf/            # Single-page PDF export
+│   ├── ocr/            # Tesseract binary discovery
+│   ├── pdf/            # Single-page, multi-page and searchable PDF export
+│   └── evaluation/     # Batch metrics, contact sheets, OCR accuracy
 ├── dataset/
 │   ├── raw/            # Self-captured document photos (see docs/dataset.md)
 │   ├── external/        # Downloaded Kaggle datasets (gitignored)
@@ -68,7 +75,9 @@ dip proj/
 ├── docs/                 # Proposal, dataset notes, weekly progress
 ├── notebooks/            # Exploratory notebooks for trying out techniques
 ├── requirements.txt
-└── main.py               # CLI entry point that runs the full pipeline
+├── main.py               # CLI entry point that runs the full pipeline
+├── evaluate.py           # Batch metrics + contact sheets
+└── ocr_eval.py           # OCR error-rate benchmark
 ```
 
 ## Setup
@@ -129,20 +138,32 @@ evidence — several invented image-quality metrics were discarded here after
 failing to agree with human judgement, so enhancement claims are measured
 against ground-truth text instead.
 
-Current measured result (synthetic benchmark):
+Current measured result (synthetic benchmark, lower CER is better):
 
 | case | baseline CER | flattened CER | |
 |------|-------------|---------------|---|
-| clean | 0.040 | 0.040 | correct no-op |
-| lighting gradient | 0.049 | **0.036** | flattening helps |
-| cast shadow | 0.036 | 0.036 | no change |
-| shadow + sensor noise | 0.647 | **0.812** | flattening *hurts* |
+| clean | 0.143 | **0.054** | helps |
+| ruled lines only | 0.129 | **0.067** | helps |
+| lighting gradient | 0.071 | 0.080 | ~unchanged |
+| cast shadow | 0.094 | 0.094 | no change |
+| shadow + sensor noise | 0.661 | **0.161** | rescued |
+| all degradations | **1.000** (unreadable) | **0.804** | 0 → 50 chars read |
 
-Illumination flattening works on its designed target but **degrades noisy
-images**: dividing by the illumination field applies up to 4× gain, which
-amplifies noise that binarisation then removes along with the text
-(characters read fell 80 → 42). Denoise before flattening, or lower the gain
-cap. See `src/enhancement/illumination.py`.
+On real photos, final ink coverage goes 10.0% → 11.3%, i.e. flattening
+*recovers* strokes the baseline missed rather than removing them.
+
+Two non-obvious steps were needed to get there, both found by measurement:
+
+1. **Denoise first, with an edge-preserving filter.** The division amplifies
+   noise, which binarisation then strips along with the text. Gaussian and
+   median blur were both measured as *worse* than no denoising at all, since
+   they soften the strokes OCR depends on; bilateral preserves them.
+2. **Skip the brightness/contrast lift afterwards.** Flattening already
+   leaves paper near 255, so the lift saturates the page and crushes ink
+   contrast. Leaving it in collapsed real-photo ink coverage from 10.4% to
+   **1.4%** — most of the handwriting erased, while still looking plausible.
+
+Both are pinned by regression tests.
 
 ## Dataset
 

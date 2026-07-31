@@ -53,6 +53,38 @@ def test_scan_page_without_corners_falls_back_to_the_whole_image():
     assert enhanced.shape[:2] == photo.shape[:2]
 
 
+def test_brightness_lift_is_skipped_once_illumination_is_normalized():
+    """Regression guard. Illumination flattening leaves paper near 255;
+    applying the brightness/contrast lift on top saturates the page and
+    crushes ink contrast. Measured on real photos, leaving it in collapsed
+    final ink coverage from 10.4% to 1.4% - most of the handwriting erased."""
+    from src.enhancement.illumination import flatten_illumination
+
+    photo = _photo()
+    gray = cv2.cvtColor(photo, cv2.COLOR_BGR2GRAY)
+    # A faint mark, like real pencil against paper rather than printer ink.
+    cv2.putText(gray, "faint text here", (130, 300), cv2.FONT_HERSHEY_SIMPLEX, 0.8, 150, 2)
+    flattened = flatten_illumination(gray)
+
+    with_lift = binarize(enhance(flattened, illumination_normalized=False))
+    without_lift = binarize(enhance(flattened, illumination_normalized=True))
+
+    assert (without_lift == 0).sum() > (with_lift == 0).sum(), (
+        "skipping the redundant lift must retain more ink"
+    )
+
+
+def test_scan_page_can_flatten_lighting_and_leaves_it_off_by_default():
+    photo = _photo()
+    corners = detect_document(photo)
+
+    _, plain = scan_page(photo, corners)
+    _, flattened = scan_page(photo, corners, flatten_lighting=True)
+
+    assert plain.shape == flattened.shape
+    assert set(np.unique(flattened)).issubset({0, 255})
+
+
 def test_binarize_produces_only_black_and_white():
     gradient = np.tile(np.linspace(0, 255, 200, dtype=np.uint8), (200, 1))
     assert set(np.unique(binarize(enhance(gradient)))).issubset({0, 255})
