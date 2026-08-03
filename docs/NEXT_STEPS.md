@@ -4,6 +4,36 @@ Written for whichever AI session or teammate picks this up next. Read this
 before touching the boundary-detection code — it captures hard-won lessons
 from this session, not just a task list.
 
+## Live bug report, resolved: adaptive-threshold fragmentation (2026-07-31)
+
+A user reported a deployed run coming back completely unreadable. Investigation
+went through several wrong turns before landing on the real cause — useful to
+read in full if a similar report comes in again:
+
+1. First suspected the illumination-flattening work — ruled out: the *same*
+   fragmented failure happened with flattening off too.
+2. Then suspected the corner detection (a real, separate issue: the detected
+   quad did have measurable corner error) — but the flattened crop was still
+   legible before enhancement/thresholding ran, so that wasn't the dominant
+   cause either. Walked back an earlier overclaim that the crop was
+   "catastrophically warped" — it wasn't.
+3. Root cause: `adaptive_threshold`'s window (`block_size=25`) was too small
+   relative to real stroke width, fragmenting continuous pen strokes into
+   disconnected dashes. This constant had never been validated against real
+   full-resolution photos.
+4. Tried Sauvola thresholding (a method built for document binarization)
+   as the principled fix — at an equivalent window it showed the *same*
+   fragmentation. Window size was the actual variable, not the algorithm.
+5. First fix attempt changed window size and `c` together and looked like a
+   wash across 41 photos (13/10/18). Isolating window size alone, full
+   283-photo dataset: **214 better, 15 worse, 54 tied**. Shipped as the new
+   `adaptive_threshold` default (`block_size=91`, `c` unchanged).
+
+Pattern worth repeating: change one variable at a time, and verify "losses"
+visually before trusting a batch metric's count — several of the 15 "worse"
+cases here were not real regressions, just a metric blind spot (non-text
+scribble marks pulling the fragmentation score down).
+
 ## Where things stand
 
 - Repo: https://github.com/iJainamJain/ScanSmart-Ai

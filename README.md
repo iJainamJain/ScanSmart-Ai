@@ -41,10 +41,31 @@ The pipeline currently:
 15. Saves every intermediate stage for inspection
 
 Boundary detection is verified at 26/31 correct (right region picked) on
-real self-captured photos, though several of those 26 include a looser
-crop margin than ideal (visible once binarized) - see
+the original self-captured sample, though several of those 26 include a
+looser crop margin than ideal (visible once binarized) - see
 [docs/dataset.md](docs/dataset.md) and the tracked backlog item for the
 planned precision fix.
+
+### Adaptive threshold window size (fixed after a real bug report)
+
+A live run on a real photo came back completely unreadable - fragmented into
+disconnected dashes, not the shadow/lighting problem it first looked like.
+Root-caused to `adaptive_threshold`'s window (`block_size`): the old default
+of 25px sits close enough to a single stroke's own width that local contrast
+swings pixel to pixel, fragmenting continuous pen strokes. It had never been
+validated against real full-resolution photos - only against smaller-effect
+cases where the problem didn't show.
+
+The fix (`block_size=91`, `c` unchanged at 15) was measured, not guessed.
+Sauvola thresholding was tried first as a more principled local-adaptive
+method, but at an equivalent window it showed the *same* fragmentation - the
+window size was the actual variable, not the algorithm. A first sweep that
+changed window size and `c` together looked like a wash (13 better/10
+worse/18 tied over 41 photos); isolating window size alone, full dataset
+(283 photos): **214 better, 15 worse, 54 tied**. The 15 "worse" cases were
+checked visually, not just trusted from the metric - none are real
+regressions; the fragmentation metric undercounts on a couple of them
+because non-text scribble marks pull its median down.
 
 Also implemented: a Streamlit GUI with camera capture, manual corner
 override and page reorder/delete; multi-page and searchable (OCR) PDF export;
@@ -60,7 +81,7 @@ dip proj/
 │   ├── detection/      # Grayscale, blur, Canny edges, contours
 │   ├── perspective/    # Corner ordering, four-point warp
 │   ├── enhancement/    # CLAHE, contrast, sharpening, histograms, illumination
-│   ├── segmentation/   # Global / Otsu / adaptive thresholding
+│   ├── segmentation/   # Global / Otsu / adaptive / Sauvola thresholding
 │   ├── morphology/     # Erosion/dilation/opening/closing
 │   ├── compression/    # JPEG/PNG size comparison
 │   ├── ocr/            # Tesseract binary discovery
