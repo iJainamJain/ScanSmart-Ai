@@ -4,6 +4,7 @@ These were duplicated across main.py, app/main.py and the evaluation module,
 which meant a tuning change in one place silently diverged from the others.
 """
 
+import cv2
 import numpy as np
 
 from src.detection.contours import find_document_contour
@@ -20,6 +21,11 @@ from src.segmentation.threshold import adaptive_threshold, clean_mask, segment_p
 BRIGHTNESS = 10
 CONTRAST = 1.15
 MORPH_KERNEL = 3
+
+MODE_COLOR = "color"
+MODE_GRAY = "gray"
+MODE_BW = "bw"
+OUTPUT_MODES = (MODE_COLOR, MODE_GRAY, MODE_BW)
 
 
 def detect_document(resized: np.ndarray) -> np.ndarray | None:
@@ -72,3 +78,53 @@ def scan_page(
 
     enhanced = enhance(page, illumination_normalized=flatten_lighting)
     return enhanced, binarize(enhanced)
+
+
+def _flatten_color(page: np.ndarray) -> np.ndarray:
+    """Apply illumination flattening to a color image, channel by channel.
+
+    flatten_illumination operates on a single 2D plane; there is no single
+    "right" way to extend it to color without either converting away from
+    color (defeating the point of color mode) or working per-channel. Per
+    channel is simple and keeps the output genuinely color, at the cost of
+    potentially shifting color balance slightly since each channel is
+    normalized independently. Acceptable for this mode's purpose - a lightly
+    corrected view of the original document, not a print-accurate one.
+    """
+    channels = cv2.split(page)
+    return cv2.merge([flatten_illumination(c) for c in channels])
+
+
+def render_page(
+    resized: np.ndarray,
+    corners: np.ndarray | None,
+    mode: str = MODE_BW,
+    flatten_lighting: bool = False,
+) -> np.ndarray:
+    """Flatten and render a page in one of three output modes.
+
+    "color" keeps the original colors, perspective-corrected and lightly
+    boosted - never binarizes, so it can't fall into the fragmentation
+    failure mode adaptive_threshold has on real handwriting (see its
+    docstring). "gray" is the enhanced, CLAHE-corrected grayscale scan -
+    also never binarizes. "bw" (the default, matching the original
+    behaviour) is the final thresholded black & white page: the most
+    aggressive mode, the best fit for OCR, and the one most likely to need
+    correction on any given photo.
+    """
+    if mode not in OUTPUT_MODES:
+        raise ValueError(f"mode must be one of {OUTPUT_MODES}, got {mode!r}")
+
+    page = four_point_transform(resized, corners) if corners is not None else resized
+
+    if mode == MODE_COLOR:
+        if flatten_lighting:
+            return _flatten_color(page)
+        return adjust_brightness_contrast(page, BRIGHTNESS, CONTRAST)
+
+    gray = to_grayscale(page) if page.ndim == 3 else page
+    if flatten_lighting:
+        gray = flatten_illumination(gray)
+    enhanced = enhance(gray, illumination_normalized=flatten_lighting)
+
+    return enhanced if mode == MODE_GRAY else binarize(enhanced)

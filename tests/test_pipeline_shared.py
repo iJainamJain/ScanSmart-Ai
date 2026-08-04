@@ -1,15 +1,33 @@
 import cv2
 import numpy as np
 
+import pytest
+
 from src.detection.contours import _score_contour, find_document_contour
-from src.pipeline import binarize, detect_document, enhance, scan_page
+from src.pipeline import (
+    MODE_BW,
+    MODE_COLOR,
+    MODE_GRAY,
+    binarize,
+    detect_document,
+    enhance,
+    render_page,
+    scan_page,
+)
 
 
 def _photo(page=(100, 100, 400, 500), shape=(600, 500)):
-    """Bright page on a darker background, as a 3-channel photo."""
+    """Bright page on a darker background, as a 3-channel photo.
+
+    Includes a dark mark inside the page so it isn't a perfectly flat
+    region - a real photo never is, and CLAHE/brightness adjustment on a
+    truly flat input can legitimately collapse to a single output value,
+    which would be mistaken for "binarized" by a naive variety check.
+    """
     img = np.full((*shape, 3), 70, np.uint8)
     x0, y0, x1, y1 = page
     img[y0:y1, x0:x1] = 220
+    cv2.rectangle(img, (x0 + 40, y0 + 40), (x0 + 120, y0 + 80), (30, 30, 30), -1)
     return img
 
 
@@ -83,6 +101,52 @@ def test_scan_page_can_flatten_lighting_and_leaves_it_off_by_default():
 
     assert plain.shape == flattened.shape
     assert set(np.unique(flattened)).issubset({0, 255})
+
+
+def test_render_page_color_mode_stays_color_and_never_binarizes():
+    photo = _photo()
+    corners = detect_document(photo)
+
+    out = render_page(photo, corners, mode=MODE_COLOR)
+
+    assert out.ndim == 3, "color mode must not collapse to greyscale"
+    assert len(np.unique(out)) > 2, "color mode must not binarize"
+
+
+def test_render_page_gray_mode_matches_plain_enhance():
+    photo = _photo()
+    corners = detect_document(photo)
+
+    out = render_page(photo, corners, mode=MODE_GRAY)
+
+    assert out.ndim == 2
+    assert len(np.unique(out)) > 2, "gray mode must not binarize"
+
+
+def test_render_page_bw_mode_matches_scan_page():
+    photo = _photo()
+    corners = detect_document(photo)
+
+    _, expected = scan_page(photo, corners)
+    actual = render_page(photo, corners, mode=MODE_BW)
+
+    assert np.array_equal(actual, expected)
+
+
+def test_render_page_color_mode_with_flattening_stays_three_channel():
+    photo = _photo()
+    corners = detect_document(photo)
+
+    out = render_page(photo, corners, mode=MODE_COLOR, flatten_lighting=True)
+
+    assert out.ndim == 3
+    assert out.shape[2] == 3
+
+
+def test_render_page_rejects_an_unknown_mode():
+    photo = _photo()
+    with pytest.raises(ValueError):
+        render_page(photo, detect_document(photo), mode="sepia")
 
 
 def test_binarize_produces_only_black_and_white():

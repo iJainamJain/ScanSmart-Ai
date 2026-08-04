@@ -135,9 +135,16 @@ py -3.12 main.py dataset/raw/sample.jpg --corners "50,40 900,60 880,1200 40,1180
 py -3.12 -m streamlit run app/main.py
 ```
 
-Upload a photo or use the camera, correct the detected corners if needed, add
-pages, and export a PDF (searchable when Tesseract is available). It works in
-a phone browser and installs to the home screen.
+Upload several photos at once (each is auto-detected and added immediately)
+or use the camera (single-shot, but resets right away for the next page),
+pick an output mode (Color / Grayscale / Black & white), and export a PDF
+(searchable when Tesseract is available). Any page can be re-cropped later
+via its **Edit** button — the corner picker there is tap-to-select then
+tap-to-place, not click-through-order: pick a corner handle, tap where it
+should go, repeat for any handle in any order. It's not true drag (Streamlit
+doesn't offer that without a heavier custom component), but it fixes the
+old "click 4 points in a fixed sequence, no do-overs" flow. Works in a phone
+browser and installs to the home screen.
 
 Deployment instructions — including the one-off Streamlit Cloud setup — are in
 [docs/DEPLOY.md](docs/DEPLOY.md).
