@@ -34,6 +34,23 @@ visually before trusting a batch metric's count — several of the 15 "worse"
 cases here were not real regressions, just a metric blind spot (non-text
 scribble marks pulling the fragmentation score down).
 
+6. Follow-up bug report on a different photo (a ruled-line diagram page):
+   thick ruled lines dominated the output. Hypothesis: block_size=91
+   resonating with the ruled-line pitch (~80px on that page, close to the
+   91px window) - a classical aliasing pattern, not a mistake in the fix
+   above. **Tried and rejected as a general fix:** deriving block_size per
+   photo from an estimated stroke width (distance transform on a
+   preliminary Otsu ink mask, percentile of the transform values at ink
+   pixels, scaled by a constant K). Calibrated K in {6, 9, 12, 15} against
+   the fragmentation metric on a 71-photo sample; every value was a net
+   regression against the fixed block_size=91 default (best case K=15: 4
+   better, 12 worse, 55 tied). The percentile-based estimate is too noisy,
+   and the fixed window already captures more of what matters across this
+   dataset than a per-photo formula built from one measurement does. Do
+   not re-attempt this exact approach without new evidence; the ruled-line
+   resonance case may simply be a known edge case of a fixed-window
+   default rather than something worth a general per-image fix.
+
 ## Where things stand
 
 - Repo: https://github.com/iJainamJain/ScanSmart-Ai
