@@ -1,5 +1,7 @@
 # SmartScan AI — Intelligent Document Scanner
 
+[![AI Handoff Ready](https://img.shields.io/badge/AI_Handoff-Ready-blue?style=flat-square)](AI_HANDOFF.md)
+
 A Digital Image Processing (DIP) mini project that turns a photo of a physical
 document (tilted, shadowed, off-center) into a clean, scanner-like digital
 image using classical image-processing techniques — no black-box ML models
@@ -37,8 +39,13 @@ The pipeline currently:
 12. Cleans that binarized output with morphological opening + closing
 13. Saves a JPEG-vs-PNG compression comparison (multiple JPEG quality
     levels) with a size/ratio report
-14. Exports the final scan as a single-page A4 PDF
+14. Exports the final scan as an A4 PDF (fully text-searchable via PyTesseract OCR)
 15. Saves every intermediate stage for inspection
+
+### Major Features Completed
+- **Streamlit GUI (`app/main.py`)**: Interactive web app supporting image upload, camera capture, live boundary previews, and manual corner-point overrides.
+- **OCR Integration**: Exports fully searchable PDFs by extracting text with Tesseract.
+- **Evaluation Layer**: Comprehensive scripts for batch metrics, contact sheets, and Character Error Rate (CER) benchmarking.
 
 Boundary detection is verified at 26/31 correct (right region picked) on
 the original self-captured sample, though several of those 26 include a
@@ -66,10 +73,6 @@ worse/18 tied over 41 photos); isolating window size alone, full dataset
 checked visually, not just trusted from the metric - none are real
 regressions; the fragmentation metric undercounts on a couple of them
 because non-text scribble marks pull its median down.
-
-Also implemented: a Streamlit GUI with camera capture, manual corner
-override and page reorder/delete; multi-page and searchable (OCR) PDF export;
-and a measurement layer (batch metrics, contact sheets, OCR error rate).
 
 ## Project structure
 
