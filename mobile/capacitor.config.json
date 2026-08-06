@@ -1,0 +1,12 @@
+{
+  "appId": "com.smartscanai.scanner",
+  "appName": "SmartScan AI",
+  "webDir": "www",
+  "server": {
+    "url": "https://smartscan-scanner.streamlit.app",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

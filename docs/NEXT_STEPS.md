@@ -4,6 +4,53 @@ Written for whichever AI session or teammate picks this up next. Read this
 before touching the boundary-detection code — it captures hard-won lessons
 from this session, not just a task list.
 
+## Android wrapper (Capacitor), debug APK built (2026-08-06)
+
+The app is now also packaged as a native Android app, in `mobile/`. This is
+deliberately a **thin WebView wrapper around the deployed Streamlit app**
+(`https://smartscan-scanner.streamlit.app`, set as `server.url` in
+`mobile/capacitor.config.json`), not a from-scratch native reimplementation
+of the DIP pipeline. That choice was explicit: a native on-device rewrite
+would discard all the validated Python pipeline work above (block_size=91,
+illumination flattening, refine_quad, the CER harness) and would need to be
+re-validated from zero. Native mobile was also out of scope for the graded
+deliverable; this wrapper is an add-on, not a replacement for the web app.
+
+**What a bare WebView doesn't handle, and what was added to fix it**
+(`mobile/android/app/src/main/java/com/smartscanai/scanner/MainActivity.java`):
+1. Camera access — `st.camera_input` uses `getUserMedia()`; a default
+   `WebChromeClient` silently refuses that permission request. Fixed via
+   `onPermissionRequest` granting the WebView's request once the Android
+   `CAMERA` runtime permission is held.
+2. PDF download — `st.download_button` serves the PDF as a `data:` URI,
+   which a plain WebView has no handler for (clicking it does nothing).
+   Fixed via `setDownloadListener`: decodes the base64 payload and saves it
+   through `MediaStore.Downloads` (scoped storage, API 29+) or the legacy
+   `MediaStore.Files` collection on older API levels. Non-`data:` URLs (i.e.
+   http(s)) fall back to `DownloadManager`.
+
+**Build status:** `./gradlew assembleDebug` succeeds
+(`mobile/android/app/build/outputs/apk/debug/app-debug.apk`, ~4.4MB). Needed
+`JAVA_HOME` pointed at Android Studio's bundled JBR (system Java 8 is too
+old for the Android Gradle Plugin) — see the exact command in the mobile
+README/task notes if picking this back up.
+
+**Not yet done:** on-device verification. No AVD is configured in this
+environment and `adb devices` found nothing connected — that's expected,
+since no physical phone has been plugged in during this session, not a
+bug. To actually test it: enable USB debugging on an Android phone, connect
+it, `adb install app-debug.apk` (or drag the APK onto the device), and
+click through the camera-permission grant and a PDF download to confirm
+both wrapper-specific fixes above actually work outside a browser. Icons
+and splash screens are generated (`npx capacitor-assets generate --android`)
+from `app/static/icon-512.png` but have not been visually confirmed on a
+real launcher.
+
+**If the deployed Streamlit URL ever changes** (e.g. renamed subdomain),
+update `server.url` in `mobile/capacitor.config.json` and re-run
+`npx cap sync android` before rebuilding — the wrapper has no logic of its
+own, it just points at that URL.
+
 ## Live bug report, resolved: adaptive-threshold fragmentation (2026-07-31)
 
 A user reported a deployed run coming back completely unreadable. Investigation
