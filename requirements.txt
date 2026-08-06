@@ -6,6 +6,13 @@
 # back to compiling from source and fails on missing system headers. Streamlit
 # Cloud currently defaults to Python 3.14, where that broke the build.
 #
+# streamlit is the one exception: capped below 1.61 because streamlit_image_
+# coordinates 0.4.0 (latest on PyPI) imports the private symbol
+# `UseColumnWith` from streamlit.elements.image, which streamlit 1.61.0
+# removed. That's a pure-Python wheel either way, so the cap carries none of
+# the compile-from-source risk the comment above warns about. Broke the live
+# app on 2026-08-06 when Streamlit Cloud auto-picked 1.61.1 on redeploy.
+#
 # Development-only tools live in requirements-dev.txt.
 
 # headless: no libGL on Streamlit Cloud, and the project makes no cv2 GUI calls
@@ -16,5 +23,5 @@ matplotlib>=3.8
 reportlab>=4.1
 pypdf>=4.0
 pytesseract>=0.3.10
-streamlit>=1.31
+streamlit>=1.31,<1.61
 streamlit-image-coordinates>=0.1.7
